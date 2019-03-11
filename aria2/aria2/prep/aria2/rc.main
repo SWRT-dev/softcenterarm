@@ -1,0 +1,22 @@
+#!/bin/sh
+
+exec 2>&1
+
+Aria2_enable=`dbus get aria2_enable`
+Aria2_restart=`dbus get aria2_restart`
+Aria2_sleep=`dbus get aria2_sleep`
+
+if test ${1} = 'start' ; then
+  if [ "$Aria2_enable" == "1" ];then
+    if [ "$Aria2_restart" == "1" ]; then
+      echo "Aria2 restart flag detected, it will now be reset"
+      dbus set aria2_restart=0
+    elif [ "$Aria2_sleep" -gt 0 ]; then
+      echo "Awaiting $Aria2_sleep seconds before launching aria2..."
+      sleep $Aria2_sleep
+    fi
+    exec /jffs/softcenter/bin/aria2c --conf-path=/jffs/softcenter/etc/aria2.conf
+  fi
+fi
+
+exit 0
