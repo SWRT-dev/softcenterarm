@@ -296,7 +296,7 @@ function pass_checked(obj){
 }
 function onSubmitCtrl() { //提交操作，提交时运行serverchan_config，显示5秒的载入画面
     document.form.action_mode.value = ' Refresh ';
-    document.form.SystemCmd.value = "serverchan_config.sh";
+    document.form.action_script.value = "serverchan_config.sh";
     if (validForm()) {
         document.form.submit();
     }
@@ -305,7 +305,7 @@ function onSubmitCtrl() { //提交操作，提交时运行serverchan_config，�
 function manual_push() {
     $G('manual_push_Btn').disabled = "disabled";
     checkTime = 2001; //停止可能在进行的刷新
-    document.form.SystemCmd.value = "serverchan_check.sh";
+    document.form.action_script.value = "serverchan_check.sh";
     document.form.action_mode.value = ' Refresh ';
     alert("手动推送成功，请检查手机信息！");
     if (validForm()) {
@@ -511,7 +511,7 @@ function oncheckclick(obj) {
 }
 function version_show(){
     $j.ajax({
-        url: 'https://koolshare.ngrok.wang/serverchan/config.json.js',
+        url: 'http://scarm.paldier.com/serverchan/config.json.js',
         type: 'GET',
         dataType: 'jsonp',
         success: function(res) {
@@ -541,7 +541,6 @@ function version_show(){
 <input type="hidden" name="action_wait" value="5"/>
 <input type="hidden" name="first_time" value=""/>
 <input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>"/>
-<input type="hidden" name="SystemCmd" value=""/>
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>"/>
 <input type="hidden" id="serverchan_enable" name="serverchan_enable" value='<% dbus_get_def("serverchan_enable", "0"); %>'/>
 

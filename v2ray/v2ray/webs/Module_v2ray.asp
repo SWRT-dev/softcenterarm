@@ -119,7 +119,7 @@ function update_v2ray_ui(obj) {
 			el.value = obj[field];
 		}
 	}
-	E("v2ray_json").value = do_js_beautify(Base64.decode(E("v2ray_json").value));
+	//E("v2ray_json").value = do_js_beautify(Base64.decode(E("v2ray_json").value));
 }
 function isJSON(str) {
 	if (typeof str == 'string' && str) {
@@ -140,7 +140,7 @@ function isJSON(str) {
 function applyRule() {
 if (E("v2ray_use_json").checked == true){
 			if(E('v2ray_json').value.indexOf("vmess://") != -1){
-				var vmess_node = JSON.parse(Base64.decode(E('v2ray_json').value.split("//")));
+				var vmess_node = JSON.parse(Base64.decode(E('v2ray_json').value.split("//")[1]));
 				console.log("use v2ray vmess://");
 				console.log(vmess_node);
 				document.form.v2ray_server.value = vmess_node.add;
@@ -314,13 +314,13 @@ function verifyFields(r) {
 <input type="hidden" name="action_script" value="v2ray_config.sh">
 <input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>" disabled>
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
-<input type="hidden" name="v2ray_enable" value="<% dbus_get_def("v2ray_enable", "0"); %>">
-<input type="hidden" name="v2ray_udp_enable" value="<% dbus_get_def("v2ray_udp_enable", "0"); %>">
-<input type="hidden" name="ss_china_state" value="<% nvram_get("ss_china_state"); %>">
-<input type="hidden" name="ss_foreign_state" value="<% nvram_get("ss_foreign_state"); %>">
-<input type="hidden" name="v2ray_dns" value="<% dbus_get_def("v2ray_dns", "0"); %>">
-<input type="hidden" name="v2ray_use_json" value="<% dbus_get_def("v2ray_use_json", "0"); %>">
-<input type="hidden" name="v2ray_json" value="<% dbus_get_def("v2ray_json", ""); %>">
+<input type="hidden" name="v2ray_enable" value="<% dbus_get_def('v2ray_enable', '0'); %>">
+<input type="hidden" name="v2ray_udp_enable" value="<% dbus_get_def('v2ray_udp_enable', '0'); %>">
+<input type="hidden" name="ss_china_state" value="<% nvram_get('ss_china_state'); %>">
+<input type="hidden" name="ss_foreign_state" value="<% nvram_get('ss_foreign_state'); %>">
+<input type="hidden" name="v2ray_dns" value="<% dbus_get_def('v2ray_dns', '0'); %>">
+<input type="hidden" name="v2ray_use_json" value="<% dbus_get_def('v2ray_use_json', '0'); %>">
+<input type="hidden" name="v2ray_json" value="<% dbus_get_def('v2ray_json', ''); %>">
 <table class="content" align="center" cellpadding="0" cellspacing="0" >
 <tr>
 <td width="17">&nbsp;</td>
@@ -453,31 +453,31 @@ document.form.v2ray_udp_enable.value = 0;
 <tr id="v2ray_use_json_basic_tr">
 <th width="35%">使用json配置</th>
 <td>
-<input type="checkbox" id="v2ray_use_json" name="v2ray_use_json" onclick="verifyFields(this, 1);" value="0">
+<input type="checkbox" id="v2ray_use_json" name="v2ray_use_json" onclick="verifyFields(this, 1);" value="<% dbus_get_def('v2ray_use_json', '0'); %>">
 </td>
 </tr>
 <tr id="v2ray_server_support_tr" style="display: none;">
 <th width="20%">地址（address）</th>
 <td align="left">
-<input type="text" maxlength="64" id="v2ray_server" name="v2ray_server" value="<% dbus_get_def("v2ray_server", "abc.abc.abc"); %>" class="input_ss_table" style="width:342px;float:left;background-color: #475A5F;color:#FFFFFF;" autocorrect="off" autocapitalize="off"/>
+<input type="text" maxlength="64" id="v2ray_server" name="v2ray_server" value="<% dbus_get_def('v2ray_server', 'abc.abc.abc'); %>" class="input_ss_table" style="width:342px;float:left;background-color: #475A5F;color:#FFFFFF;" autocorrect="off" autocapitalize="off"/>
 </td>
 </tr>
 <tr id="v2ray_port_support_tr" style="display: none;">
 <th width="20%">端口（port）</th>
 <td align="left">
-<input type="text" maxlength="64" id="v2ray_port" name="v2ray_port" value="<% dbus_get_def("v2ray_port", "12345"); %>" class="input_ss_table" style="width:342px;float:left;background-color: #475A5F;color:#FFFFFF;" autocomplete="off" autocorrect="off" autocapitalize="off"/>
+<input type="text" maxlength="64" id="v2ray_port" name="v2ray_port" value="<% dbus_get_def('v2ray_port', '12345'); %>" class="input_ss_table" style="width:342px;float:left;background-color: #475A5F;color:#FFFFFF;" autocomplete="off" autocorrect="off" autocapitalize="off"/>
 </td>
 </tr>
 <tr id="v2ray_uuid_basic_tr" style="display: none;">
 <th width="20%">用户id（id）</th>
 <td align="left">
-<input name=v2ray_uuid style="background-color: #475A5F;color:#FFFFFF;" value='<% dbus_get_def("v2ray_uuid", "12345-1123-123-123abc"); %>'>
+<input name="v2ray_uuid" style="background-color: #475A5F;color:#FFFFFF;" value="<% dbus_get_def('v2ray_uuid', '12345-1123-123-123abc'); %>">
 </td>
 </tr>
 <tr id="v2ray_alterid_basic_tr" style="display: none;">
 <th width="20%">额外ID (Alterld)</th>
 <td align="left">
-<input name=v2ray_alterid style="background-color: #475A5F;color:#FFFFFF;" value='<% dbus_get_def("v2ray_alterid", "100"); %>'>
+<input name="v2ray_alterid" style="background-color: #475A5F;color:#FFFFFF;" value="<% dbus_get_def('v2ray_alterid', '100'); %>">
 </td>
 </tr>
 <tr id="v2ray_security_basic_tr" style="display: none;">
@@ -547,7 +547,7 @@ document.form.v2ray_udp_enable.value = 0;
 <tr id="v2ray_mux_enable_basic_tr" style="display: none;">
 <th width="35%">多路复用 (Mux)</th>
 <td>
-<input type="checkbox" id="v2ray_mux_enable" name="v2ray_mux_enable" onclick="verifyFields(this, 1);" value="0">
+<input type="checkbox" id="v2ray_mux_enable" name="v2ray_mux_enable" onclick="verifyFields(this, 1);" value="<% dbus_get_def("v2ray_mux_enable", "0"); %>">
 </td>
 </tr>
 <tr id="v2ray_json_basic_tr" style="display: none;">

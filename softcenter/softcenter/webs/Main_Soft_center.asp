@@ -250,7 +250,7 @@ function appPostScript(moduleInfo, script) {
 
     //currState.name = moduleInfo.name;
     //TODO auto choose for home_url
-    data["softcenter_home_url"] = "http://sc.paldier.com";
+    data["softcenter_home_url"] = "http://scarm.paldier.com";
     data["softcenter_installing_todo"] = moduleInfo.name;
     if(script == "ks_app_install.sh") {
     data["softcenter_installing_tar_url"] = moduleInfo.tar_url;
@@ -290,7 +290,7 @@ function appUninstallModule(moduleInfo) {
 </script>
 <script>
     //TODO auto detect home url
-    db_softcenter_["softcenter_home_url"] = "http://sc.paldier.com";
+    db_softcenter_["softcenter_home_url"] = "http://scarm.paldier.com";
     
     // 安装信息更新策略:
     // 当软件安装的时候,安装进程内部会有超时时间. 超过超时时间 没安装成功,则认为失败.
@@ -529,11 +529,11 @@ function softceterInitData(data) {
 
                 // icon 规则:
                 // 如果已安装的插件,那图标必定在 /koolshare/res 目录, 通过 /res/icon-{name}.png 请求路径得到图标
-                // 如果是未安装的插件,则必定在 http://sc.paldier.com/{name}/{name}/icon-{name}.png
+                // 如果是未安装的插件,则必定在 http://scarm.paldier.com/{name}/{name}/icon-{name}.png
                 // TODO 如果因为一些错误导致没有图标, 有可能显示一张默认图标吗?
                 item.icon = parseInt(item.install, 10) !== 0
                     ? ('/res/icon-' + item.name + '.png')
-                    : ('http://sc.paldier.com' + new Array(3).join('/softcenter') + '/res/icon-' + item.name + '.png');
+                    : ('http://scarm.paldier.com' + new Array(3).join('/softcenter') + '/res/icon-' + item.name + '.png');
             });
             return result;
         };
@@ -613,7 +613,7 @@ function menu_hook(title, tab) {
 }
 function notice_show(){
     $.ajax({
-        url: 'http://sc.paldier.com/softcenter/push_message.json.js',
+        url: 'http://scarm.paldier.com/softcenter/push_message.json.js',
         type: 'GET',
         dataType: 'jsonp',
         success: function(res) {

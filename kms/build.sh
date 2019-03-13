@@ -2,7 +2,7 @@
 
 
 MODULE=kms
-VERSION=1.5
+VERSION=1.6.1
 TITLE=kms
 DESCRIPTION=kms
 HOME_URL=Module_kms.asp

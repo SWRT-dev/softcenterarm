@@ -268,7 +268,7 @@ creat_v2ray_json(){
 	fi
 
 	echo "$(date "+%F %T")测试V2Ray配置文件..... " >> /tmp/v2ray.log
-	cd /koolshare/bin
+	cd /jffs/softcenter/bin
 	result=$(v2ray -test -config="$V2RAY_CONFIG_FILE" | grep "Configuration OK.")
 	if [ -n "$result" ];then
 		echo "$(date "+%F %T") $result" >> /tmp/v2ray.log
@@ -314,7 +314,7 @@ fi
 v2ray_serverip
 /jffs/softcenter/bin/v2ray -format pb -config "$V2RAY_CONFIG_FILE_PB" >/dev/null 2>&1 &
 /jffs/softcenter/scripts/v2ray-rules.sh $mip 1234 &
-/usr/sbin/ssr-state 2>/dev/null &
+/jffs/softcenter/scripts/ssr-state 2>/dev/null &
 exit 0
 }
 restart() {

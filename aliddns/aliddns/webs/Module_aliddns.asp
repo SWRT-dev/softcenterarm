@@ -8,17 +8,109 @@
 <link rel="shortcut icon" href="images/favicon.png"/>
 <link rel="icon" href="images/favicon.png"/>
 <title>Aliddns</title>
+<link rel="stylesheet" type="text/css" href="ParentalControl.css">
 <link rel="stylesheet" type="text/css" href="index_style.css"/>
 <link rel="stylesheet" type="text/css" href="form_style.css"/>
 <link rel="stylesheet" type="text/css" href="usp_style.css"/>
 <link rel="stylesheet" type="text/css" href="css/element.css">
 <script type="text/javascript" src="/js/jquery.js"></script>
-<script src="/state.js"></script>
-<script src="/help.js"></script>
+<script type="text/javascript" src="/state.js"></script>
+<script type="text/javascript" src="/popup.js"></script>
+<script type="text/javascript" src="/help.js"></script>
+<script type="text/javascript" src="/general.js"></script>
+<script type="text/javascript" src="/client_function.js"></script>
+<script type="text/javascript" src="/validator.js"></script>
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/calendar/jquery-ui.js"></script>
+<script type="text/javascript" src="/dbconf?p=aliddns&v=<% uptime(); %>"></script>
+<style>
+</style>
+<script>
+function initial() {
+    show_menu(menu_hook);
+    var enable ="<% dbus_get_def("aliddns_enable", "0"); %>";
+    $('#switch').prop('checked', enable === "1");
+    buildswitch();
+    update_visibility();
+}
+function applyRule() {
+    var posting = false;
+	var inputs = ['ak', 'sk', 'name', 'domain', 'interval', 'dns', 'curl', 'ttl'];
+        if(posting) return;
+        posting = true; // save
+		var data = {
+			aliddns_enable: $('#switch').prop('checked') | 0,
+			action_mode: ' Refresh ',
+			current_page: 'Module_aliddns.asp',
+			next_page: 'Module_aliddns.asp',
+			action_script: 'aliddns_config.sh'
+		};
+		for(var i = 0; i< inputs.length; i++) {
+			var key = 'aliddns_' + inputs[i];
+			data['aliddns_' + inputs[i]] = $('#aliddns_' + inputs[i]).val()
+		}
+        $.ajax({
+            type: 'POST',
+            url: 'applydb.cgi?p=aliddns_',
+            data: $.param(data)
+        }).then(function () {
+            posting = false;
+            alert('saved');
+        }, function () {
+            posting = false;
+           alert('failed'); 
+        })
+}
+function menu_hook(title, tab) {
+	tabtitle[tabtitle.length -1] = new Array("", "软件中心", "离线安装", "Aliddns");
+	tablink[tablink.length -1] = new Array("", "Main_Soft_center.asp", "Main_Soft_setting.asp", "Module_aliddns.asp");
+}
+
+function reload_Soft_Center(){
+location.href = "/Main_Soft_center.asp";
+}
+
+function buildswitch(){
+	$("#switch").click(
+	function(){
+		update_visibility();
+	});
+}
+
+function update_visibility(){
+	if(document.getElementById('switch').checked){
+		document.getElementById("last_act_tr").style.display = "";
+		document.getElementById("ak_tr").style.display = "";
+		document.getElementById("sk_tr").style.display = "";
+		document.getElementById("interval_tr").style.display = "";
+		document.getElementById("name_tr").style.display = "";
+		document.getElementById("dns_tr").style.display = "";
+		document.getElementById("curl_tr").style.display = "";
+		document.getElementById("ttl_tr").style.display = "";
+		
+	}else{
+		document.getElementById("last_act_tr").style.display = "none";
+		document.getElementById("ak_tr").style.display = "none";
+		document.getElementById("sk_tr").style.display = "none";
+		document.getElementById("interval_tr").style.display = "none";
+		document.getElementById("name_tr").style.display = "none";
+		document.getElementById("dns_tr").style.display = "none";
+		document.getElementById("curl_tr").style.display = "none";
+		document.getElementById("ttl_tr").style.display = "none";
+	}
+}
+
+</script>
 </head>
-<body>
+<body onload="initial();" onunload="unload_body();" onselectstart="return false;">
 <div id="TopBanner"></div>
 <div id="Loading" class="popup_bg"></div>
+<iframe name="hidden_frame" id="hidden_frame" width="0" height="0" frameborder="0"></iframe>
+<form method="post" name="form" action="/applydb.cgi?p=aliddns" target="hidden_frame">
+<input type="hidden" name="productid" value="<% nvram_get("productid"); %>">
+<input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>" disabled>
+<input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
+<input type="hidden" name="aliddns_enable" value="<% dbus_get_def("aliddns_enable", "0"); %>">
 <table class="content" align="center" cellpadding="0" cellspacing="0">
     <tr>
         <td width="17">&nbsp;</td>
@@ -107,7 +199,7 @@
                 						    </tr>
                 						</table>
                 						<div class="apply_gen">
-                						    <input class="button_gen" type="button" value="提交">
+									<input class="button_gen" onclick="applyRule()" type="button" value="应用设置"/>
                 						</div>
 										<div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"/></div>
 										<div class="KoolshareBottom" style="margin-top:540px;">
@@ -127,83 +219,5 @@
     </tr>
 </table>
 <div id="footer"></div>
-<script>
-$(function () {
-    show_menu(menu_hook);
-    var enable = "<% dbus_get_def("aliddns_enable", "0"); %>";
-    $('#switch').prop('checked', enable === "1");
-    buildswitch();
-    update_visibility();
-    var posting = false;
-	var inputs = ['ak', 'sk', 'name', 'domain', 'interval', 'dns', 'curl', 'ttl'];
-    $('.button_gen').click(function () {
-        if(posting) return;
-        posting = true; // save
-		var data = {
-			aliddns_enable: $('#switch').prop('checked') | 0,
-			action_mode: ' Refresh ',
-			current_page: 'Module_aliddns.asp',
-			next_page: 'Module_aliddns.asp',
-			SystemCmd: 'aliddns_config.sh'
-		};
-		for(var i = 0; i< inputs.length; i++) {
-			var key = 'aliddns_' + inputs[i];
-			data['aliddns_' + inputs[i]] = $('#aliddns_' + inputs[i]).val()
-		}
-        $.ajax({
-            type: 'POST',
-            url: 'applydb.cgi?p=aliddns_',
-            data: $.param(data)
-        }).then(function () {
-            posting = false;
-            alert('saved');
-        }, function () {
-            posting = false;
-           alert('failed'); 
-        })
-    })
-})
-
-function menu_hook(title, tab) {
-	tabtitle[tabtitle.length -1] = new Array("", "软件中心", "离线安装", "Aliddns");
-	tablink[tablink.length -1] = new Array("", "Main_Soft_center.asp", "Main_Soft_setting.asp", "Module_aliddns.asp");
-}
-
-function reload_Soft_Center(){
-location.href = "/Main_Soft_center.asp";
-}
-
-function buildswitch(){
-	$("#switch").click(
-	function(){
-		update_visibility();
-	});
-}
-
-function update_visibility(){
-	if(document.getElementById('switch').checked){
-		document.getElementById("last_act_tr").style.display = "";
-		document.getElementById("ak_tr").style.display = "";
-		document.getElementById("sk_tr").style.display = "";
-		document.getElementById("interval_tr").style.display = "";
-		document.getElementById("name_tr").style.display = "";
-		document.getElementById("dns_tr").style.display = "";
-		document.getElementById("curl_tr").style.display = "";
-		document.getElementById("ttl_tr").style.display = "";
-		
-	}else{
-		document.getElementById("last_act_tr").style.display = "none";
-		document.getElementById("ak_tr").style.display = "none";
-		document.getElementById("sk_tr").style.display = "none";
-		document.getElementById("interval_tr").style.display = "none";
-		document.getElementById("name_tr").style.display = "none";
-		document.getElementById("dns_tr").style.display = "none";
-		document.getElementById("curl_tr").style.display = "none";
-		document.getElementById("ttl_tr").style.display = "none";
-	}
-}
-
-</script>
 </body>
 </html>
-

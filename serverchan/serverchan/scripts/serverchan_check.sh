@@ -1,3 +1,3 @@
 #!/bin/sh
-source /koolshare/scripts/base.sh
-/koolshare/serverchan/serverchan_check
+source /jffs/softcenter/scripts/base.sh
+/jffs/softcenter/serverchan/serverchan_check

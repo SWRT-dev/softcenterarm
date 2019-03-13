@@ -1,3 +1,3 @@
 #!/bin/sh
-source /koolshare/scripts/base.sh
-/koolshare/serverchan/serverchan_config
+source /jffs/softcenter/scripts/base.sh
+/jffs/softcenter/serverchan/serverchan_config

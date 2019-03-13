@@ -1,3 +1,3 @@
 #!/bin/sh
-source /koolshare/scripts/base.sh
-/koolshare/serverchan/serverchan_dhcp_trigger
+source /jffs/softcenter/scripts/base.sh
+/jffs/softcenter/serverchan/serverchan_dhcp_trigger
