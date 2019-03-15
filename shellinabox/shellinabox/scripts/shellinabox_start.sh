@@ -11,6 +11,7 @@ iptables -D INPUT -p tcp --dport 4200 -j ACCEPT
 }
 
 start() {
+[ "$webshell_enable" == "0" ] && exit 0
 #不重复启动
 icount=`ps -w|grep shellinaboxd|grep -v grep|wc -l`
 if [ $icount != 0  ] ;then

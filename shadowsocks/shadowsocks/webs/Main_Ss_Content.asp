@@ -144,8 +144,8 @@ function pop_help() {
 			content: '<div style="padding: 50px; line-height: 22px; background-color: #393D49; color: #fff; font-weight: 300;">\
 				<b>梅林固件 - 科学上网插件 - ' + db_ss["ss_basic_version_local"] + '</b><br><br>\
 				本插件是支持<a target="_blank" href="https://github.com/shadowsocks/shadowsocks-libev" ><u>SS</u></a>、<a target="_blank" href="https://github.com/shadowsocksrr/shadowsocksr-libev"><u>SSR</u></a>、<a target="_blank" href="http://firmware.koolshare.cn/binary/koolgame"><u>KoolGame</u></a>、<a target="_blank" href="https://github.com/v2ray/v2ray-core"><u>V2Ray</u></a>四种客户端的科学上网、游戏加速工具。<br>\
-				本插件仅支持Merlin mips 3.10.104内核的固件，请不要用于其它固件安装。<br>\
-				使用本插件有任何问题，可以前往<a style="color:#e7bd16" target="_blank" href="https://github.com/paldier/softcenter/issues"><u>github的issue页面</u></a>反馈~<br><br>\
+				本插件仅支持Merlin AM380 2.6.36.4内核的固件，请不要用于其它固件安装。<br>\
+				使用本插件有任何问题，可以前往<a style="color:#e7bd16" target="_blank" href="https://github.com/paldier/softcenterarm/issues"><u>github的issue页面</u></a>反馈~<br><br>\
 				● SS/SSR一键脚本：<a style="color:#e7bd16" target="_blank" href="https://github.com/onekeyshell/kcptun_for_ss_ssr/tree/master"><u>一键安装KCPTUN for SS/SSR on Linux</u></a><br>\
 				● koolgame一键脚本：<a style="color:#e7bd16" target="_blank" href="https://github.com/clangcn/game-server"><u>一键安装koolgame服务器端脚本，完美支持nat2</u></a><br>\
 				● V2Ray一键脚本：<a style="color:#e7bd16" target="_blank" href="https://233blog.com/post/17/"><u>V2Ray 搭建和优化详细图文教程</u></a><br>\
@@ -2012,7 +2012,7 @@ function get_ss_status_data() {
 
 function get_udp_status() {
 	$.ajax({
-		url: 'apply.cgi?current_page=Main_Ss_Content.asp.asp&next_page=Main_Ss_Content.asp.asp&group_id=&modified=0&action_mode=+Refresh+&action_script=ss_udp_status.sh&action_wait=&first_time=&preferred_lang=CN&firmver=3.0.0.4',
+		url: 'applydb.cgi?current_page=Main_Ss_Content.asp.asp&next_page=Main_Ss_Content.asp.asp&group_id=&modified=0&action_mode=+Refresh+&action_script=ss_udp_status.sh&action_wait=&first_time=&preferred_lang=CN&firmver=3.0.0.4',
 		dataType: 'html',
 		success: function (response) {
 			setTimeout("write_udp_status();", 1000);
@@ -2752,7 +2752,7 @@ function close_proc_status() {
 
 function now_get_status() {
 	$.ajax({
-		url: 'apply.cgi?current_page=Main_Ss_Content.asp.asp&next_page=Main_Ss_Content.asp.asp&group_id=&modified=0&action_mode=+Refresh+&action_scriptss_proc_status.sh=&action_wait=&first_time=&preferred_lang=CN&firmver=3.0.0.4',
+		url: 'applydb.cgi?current_page=Main_Ss_Content.asp.asp&next_page=Main_Ss_Content.asp.asp&group_id=&modified=0&action_mode=+Refresh+&action_scriptss_proc_status.sh=&action_wait=&first_time=&preferred_lang=CN&firmver=3.0.0.4',
 		dataType: 'html'
 	});
 }
