@@ -30,7 +30,7 @@ cp /jffs/softcenter/bin/chinadns $TARGET_FOLDER/bin/
 cp /jffs/softcenter/bin/chinadns1 $TARGET_FOLDER/bin/
 cp /jffs/softcenter/bin/resolveip $TARGET_FOLDER/bin/
 cp /jffs/softcenter/bin/haproxy $TARGET_FOLDER/bin/
-cp /jffs/softcenter/bin/client_linux_mips $TARGET_FOLDER/bin/
+cp /jffs/softcenter/bin/client_linux_arm5 $TARGET_FOLDER/bin/
 cp /jffs/softcenter/bin/base64_encode $TARGET_FOLDER/bin/
 cp /jffs/softcenter/bin/koolbox $TARGET_FOLDER/bin/
 cp /jffs/softcenter/bin/jq $TARGET_FOLDER/bin/
