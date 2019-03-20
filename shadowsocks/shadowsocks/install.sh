@@ -46,7 +46,7 @@ rm -rf /jffs/softcenter/bin/Pcap_DNSProxy
 rm -rf /jffs/softcenter/bin/dnscrypt-proxy
 rm -rf /jffs/softcenter/bin/dns2socks
 rm -rf /jffs/softcenter/bin/cdns
-rm -rf /jffs/softcenter/bin/client_linux_mips
+rm -rf /jffs/softcenter/bin/client_linux_arm5
 rm -rf /jffs/softcenter/bin/chinadns
 rm -rf /jffs/softcenter/bin/chinadns1
 rm -rf /jffs/softcenter/bin/resolveip
@@ -70,6 +70,8 @@ rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/gameV2.png
 rm -rf /jffs/softcenter/res/ss_proc_status.htm
 rm -rf /jffs/softcenter/init.d/S89Socks5.sh
+rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
+rm -rf /jffs/softcenter/init.d/N99shadowsocks.sh
 find /jffs/softcenter/init.d/ -name "*socks5.sh" | xargs rm -rf
 
 echo_date 开始复制文件！
@@ -113,6 +115,8 @@ echo_date 创建一些二进制文件的软链接！
 [ ! -L "/jffs/softcenter/bin/netstat" ] && cp -rf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/netstat
 [ ! -L "/jffs/softcenter/bin/base64_decode" ] && cp -rf /jffs/softcenter/bin/base64_encode /jffs/softcenter/bin/base64_decode
 [ ! -L "/jffs/softcenter/init.d/S99socks5.sh" ] && cp -rf /jffs/softcenter/scripts/ss_socks5.sh /jffs/softcenter/init.d/S99socks5.sh
+[ ! -L "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
+[ ! -L "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
 
 echo_date 设置一些默认值
 [ -z "$ss_dns_china" ] && dbus set ss_dns_china=11
