@@ -328,10 +328,10 @@ kill_process(){
 		echo_date 关闭pdu进程...
 		kill -9 $pdu >/dev/null 2>&1
 	fi
-	client_linux_mips_process=`pidof client_linux_mips`
-	if [ -n "$client_linux_mips_process" ];then 
+	client_linux_arm5_process=`pidof client_linux_arm5`
+	if [ -n "$client_linux_arm5_process" ];then 
 		echo_date 关闭kcp协议进程...
-		killall client_linux_mips >/dev/null 2>&1
+		killall client_linux_arm5 >/dev/null 2>&1
 	fi
 	haproxy_process=`pidof haproxy`
 	if [ -n "$haproxy_process" ];then 
@@ -363,7 +363,7 @@ kill_process(){
 		echo_date 关闭haveged进程...
 		killall haveged >/dev/null 2>&1
 	fi
-	echo 1 > /proc/sys/net/ipv4/tcp_fastopen
+	#echo 1 > /proc/sys/net/ipv4/tcp_fastopen
 	
 }
 
@@ -767,6 +767,28 @@ create_dnsmasq_conf(){
 		echo_date 添加自定义dnsmasq设置到/tmp/custom.conf
 		echo "$ss_dnsmasq" | base64_decode | sort -u >> /tmp/custom.conf
 	fi
+	#*******************************************************************
+	# these sites need to go ss inside router
+	if [ "$ss_basic_mode" != "6" ];then
+		echo "#for router itself" >> /tmp/wblist.conf
+		echo "server=/.google.com.tw/127.0.0.1#7913" >> /tmp/wblist.conf
+		echo "ipset=/.google.com.tw/router" >> /tmp/wblist.conf
+		#echo "server=/dns.google.com/127.0.0.1#7913" >> /tmp/wblist.conf
+		#echo "ipset=/dns.google.com/router" >> /tmp/wblist.conf
+		#echo "server=/.github.com/127.0.0.1#7913" >> /tmp/wblist.conf
+		#echo "ipset=/.github.com/router" >> /tmp/wblist.conf
+		#echo "server=/.github.io/127.0.0.1#7913" >> /tmp/wblist.conf
+		#echo "ipset=/.github.io/router" >> /tmp/wblist.conf
+		#echo "server=/.raw.githubusercontent.com/127.0.0.1#7913" >> /tmp/wblist.conf
+		#echo "ipset=/.raw.githubusercontent.com/router" >> /tmp/wblist.conf
+		#echo "server=/.adblockplus.org/127.0.0.1#7913" >> /tmp/wblist.conf
+		#echo "ipset=/.adblockplus.org/router" >> /tmp/wblist.conf
+		#echo "server=/.entware.net/127.0.0.1#7913" >> /tmp/wblist.conf
+		#echo "ipset=/.entware.net/router" >> /tmp/wblist.conf
+		#echo "server=/.apnic.net/127.0.0.1#7913" >> /tmp/wblist.conf
+		#echo "ipset=/.apnic.net/router" >> /tmp/wblist.conf
+	fi
+	#*******************************************************************
 
 	# append white domain list, not through ss
 	wanwhitedomain=$(echo $ss_wan_white_domain | base64_decode)
@@ -942,14 +964,14 @@ start_kcp(){
 
 			start-stop-daemon -S -q -b -m \
 			-p /tmp/var/kcp.pid \
-			-x /jffs/softcenter/bin/client_linux_mips \
+			-x /jffs/softcenter/bin/client_linux_arm5 \
 			-- -l 127.0.0.1:1091 \
 			-r $ss_basic_kcp_server:$ss_basic_kcp_port \
 			$KCP_CRYPT $KCP_KEY $KCP_SNDWND $KCP_RNDWND $KCP_MTU $KCP_CONN $COMP $KCP_MODE $ss_basic_kcp_extra
 		else
 			start-stop-daemon -S -q -b -m \
 			-p /tmp/var/kcp.pid \
-			-x /jffs/softcenter/bin/client_linux_mips \
+			-x /jffs/softcenter/bin/client_linux_arm5 \
 			-- -l 127.0.0.1:1091 \
 			-r $ss_basic_kcp_server:$ss_basic_kcp_port \
 			$ss_basic_kcp_parameter
@@ -1148,7 +1170,7 @@ fire_redir(){
 	if [ "$ss_basic_type" == "0" ] && [ "$ss_basic_tfo" == "1" ];then
 		local ARG_2="--fast-open"
 		echo_date $BIN开启tcp fast open支持.
-		echo 3 > /proc/sys/net/ipv4/tcp_fastopen
+		#echo 3 > /proc/sys/net/ipv4/tcp_fastopen
 	else
 		local ARG_2=""
 	fi
@@ -1664,7 +1686,8 @@ flush_nat(){
 	
 	iptables -t mangle -F SHADOWSOCKS >/dev/null 2>&1 && iptables -t mangle -X SHADOWSOCKS >/dev/null 2>&1
 	iptables -t mangle -F SHADOWSOCKS_GAM > /dev/null 2>&1 && iptables -t mangle -X SHADOWSOCKS_GAM > /dev/null 2>&1
-	iptables -t nat -D OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 3333 >/dev/null 2>&1
+	iptables -t nat -D OUTPUT -p tcp -m set --match-set router dst -j REDIRECT --to-ports 3333 >/dev/null 2>&1
+	#iptables -t nat -D OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 3333 >/dev/null 2>&1
 	iptables -t nat -F OUTPUT > /dev/null 2>&1
 	iptables -t nat -X SHADOWSOCKS_EXT > /dev/null 2>&1
 	#iptables -t nat -D PREROUTING -p udp -s $(get_lan_cidr) --dport 53 -j DNAT --to $lan_ipaddr >/dev/null 2>&1
@@ -1921,7 +1944,8 @@ apply_nat_rules(){
 	lan_acess_control
 	#-----------------------FOR ROUTER---------------------
 	# router itself
-	[ "$ss_basic_mode" != "6" ] && iptables -t nat -A OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 3333
+	[ "$ss_basic_mode" != "6" ] && iptables -t nat -A OUTPUT -p tcp -m set --match-set router dst -j REDIRECT --to-ports 3333
+	#[ "$ss_basic_mode" != "6" ] && iptables -t nat -A OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 3333
 	iptables -t nat -A OUTPUT -p tcp -m mark --mark "$ip_prefix_hex" -j SHADOWSOCKS_EXT
 	
 	# 把最后剩余流量重定向到相应模式的nat表中对应的主模式的链

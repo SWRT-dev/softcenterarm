@@ -1049,21 +1049,21 @@ case $ss_online_action in
 0)
 	# 删除所有节点
 	set_lock
-	detect
+	#detect
 	remove_all
 	unset_lock
 	;;
 1)
 	# 删除所有订阅节点
 	set_lock
-	detect
+	#detect
 	remove_online
 	unset_lock
 	;;
 2)
 	# 保存订阅设置但是不订阅
 	set_lock
-	detect
+	#detect
 	local_groups=`dbus list ssconf_basic_|grep group|cut -d "=" -f2|sort -u|wc -l`
 	online_group=`dbus get ss_online_links|base64_decode|sed 's/$/\n/'|sed '/^$/d'|wc -l`
 	echo_date "保存订阅节点成功，现共有 $online_group 组订阅来源，当前节点列表内已经订阅了 $local_groups 组..."
@@ -1085,7 +1085,7 @@ case $ss_online_action in
 3)
 	# 订阅节点
 	set_lock
-	detect
+	#detect
 	echo_date "开始订阅"
 	start_update
 	unset_lock
@@ -1093,7 +1093,7 @@ case $ss_online_action in
 4)
 	# 通过链接添加ss:// ssr:// vmess://
 	set_lock
-	detect
+	#detect
 	add
 	unset_lock
 	;;
