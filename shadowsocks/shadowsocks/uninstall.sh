@@ -25,7 +25,7 @@ rm -rf /jffs/softcenter/bin/Pcap_DNSProxy
 rm -rf /jffs/softcenter/bin/dnscrypt-proxy
 rm -rf /jffs/softcenter/bin/dns2socks
 rm -rf /jffs/softcenter/bin/cdns
-rm -rf /jffs/softcenter/bin/client_linux_mips
+rm -rf /jffs/softcenter/bin/client_linux_arm5
 rm -rf /jffs/softcenter/bin/chinadns
 rm -rf /jffs/softcenter/bin/chinadns1
 rm -rf /jffs/softcenter/bin/resolveip
@@ -49,6 +49,8 @@ rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/gameV2.png
 rm -rf /jffs/softcenter/res/ss_proc_status.htm
 rm -rf /jffs/softcenter/init.d/S89Socks5.sh
+rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
+rm -rf /jffs/softcenter/init.d/N99shadowsocks.sh
 
 # remove start up command
 sed -i '/ssconfig.sh/d' /jffs/softcenter/scripts/wan-start >/dev/null 2>&1
