@@ -20,6 +20,8 @@ IFIP_DNS2=`echo $ISP_DNS2|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
 lan_ipaddr=$(nvram get lan_ipaddr)
 ip_prefix_hex=`nvram get lan_ipaddr | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("00/0xffffff00\n")}'`
 ARG_OBFS=""
+#增加多线程
+ss_basic_mcore=1
 
 #-----------------------------------------------
 get_config(){
@@ -941,9 +943,21 @@ start_haveged(){
 	haveged -w 1024 >/dev/null 2>&1
 }
 
+write_nat_start(){
+	echo_date "添加nat-start触发事件..."
+	dbus set __event__onnatstart_shadowsocks="/jffs/softcenter/ss/ssconfig.sh"
+}
+
+remove_nat_start(){
+	[ -n "`dbus get __event__onnatstart_shadowsocks`" ] && {
+		echo_date "删除nat-start触发..."
+		dbus remove __event__onnatstart_shadowsocks
+	}
+}
+
 auto_start(){
-	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
-	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
+	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
+	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
 }
 
 start_kcp(){
@@ -2271,6 +2285,7 @@ apply_ss(){
 	remove_ss_trigger_job
 	remove_ss_reboot_job
 	restore_conf
+	remove_nat_start
 	# restart dnsmasq when ss server is not ip or on router boot
 	restart_dnsmasq
 	flush_nat
@@ -2287,6 +2302,7 @@ apply_ss(){
 	load_module
 	creat_ipset
 	create_dnsmasq_conf
+	write_nat_start
 	# do not re generate json on router start, use old one
 	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" != "3" ] && creat_ss_json
 	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" = "3" ] && creat_v2ray_json
@@ -2357,6 +2373,7 @@ start)
 stop)
 	set_lock
 	disable_ss
+	remove_nat_start
 	echo_date
 	echo_date 你已经成功关闭科学上网服务~
 	echo_date See you again!
