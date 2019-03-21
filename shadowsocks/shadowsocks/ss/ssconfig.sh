@@ -21,7 +21,7 @@ lan_ipaddr=$(nvram get lan_ipaddr)
 ip_prefix_hex=`nvram get lan_ipaddr | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("00/0xffffff00\n")}'`
 ARG_OBFS=""
 #增加多线程
-ss_basic_mcore=1
+#ss_basic_mcore=1
 
 #-----------------------------------------------
 get_config(){
