@@ -42,7 +42,7 @@ rm -rf /jffs/softcenter/bin/base64
 rm -rf /jffs/softcenter/bin/shuf
 rm -rf /jffs/softcenter/bin/netstat
 rm -rf /jffs/softcenter/bin/base64_decode
-rm -rf /jffs/softcenter/bin/base64_encode
+#rm -rf /jffs/softcenter/bin/base64_encode
 rm -rf /jffs/softcenter/res/layer
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/icon-shadowsocks.png
@@ -57,7 +57,7 @@ rm -rf /jffs/softcenter/res/ss_proc_status.htm
 rm -rf /jffs/softcenter/res/ss_udp_status.htm
 #rm -rf /jffs/softcenter/res/v2ray_log.htm
 rm -rf /jffs/softcenter/configs/ss_conf.sh
-rm -rf /jffs/softcenter/init.d/S89Socks5.sh
+rm -rf /jffs/softcenter/init.d/S99socks5.sh
 rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
 rm -rf /jffs/softcenter/init.d/N99shadowsocks.sh
 
