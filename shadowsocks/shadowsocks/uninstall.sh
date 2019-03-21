@@ -9,6 +9,7 @@ sleep 1
 
 rm -rf /jffs/softcenter/ss/*
 rm -rf /jffs/softcenter/scripts/ss_*
+rm -rf /jffs/softcenter/scripts/uninstall_shadowsocks.sh
 rm -rf /jffs/softcenter/webs/Main_Ss*
 rm -rf /jffs/softcenter/bin/ss-redir
 rm -rf /jffs/softcenter/bin/ss-tunnel
@@ -41,6 +42,7 @@ rm -rf /jffs/softcenter/bin/base64
 rm -rf /jffs/softcenter/bin/shuf
 rm -rf /jffs/softcenter/bin/netstat
 rm -rf /jffs/softcenter/bin/base64_decode
+rm -rf /jffs/softcenter/bin/base64_encode
 rm -rf /jffs/softcenter/res/layer
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/icon-shadowsocks.png
