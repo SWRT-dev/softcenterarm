@@ -217,8 +217,15 @@ kill_process(){
 		echo_date 关闭ud2raw进程...
 		killall udp2raw >/dev/null 2>&1
 	fi
-	if [ -n "`pidof jitterentropy-rngd`" ];then
-		killall jitterentropy-rngd >/dev/null 2>&1
+	https_dns_proxy_process=`pidof https_dns_proxy`
+	if [ -n "$https_dns_proxy_process" ];then 
+		echo_date 关闭https_dns_proxy进程...
+		killall https_dns_proxy >/dev/null 2>&1
+	fi
+	haveged_process=`pidof haveged`
+	if [ -n "$haveged_process" ];then 
+		echo_date 关闭haveged进程...
+		killall haveged >/dev/null 2>&1
 	fi
 }
 
@@ -537,7 +544,7 @@ start_dns(){
 			# ss服务器可能是域名且没有正确解析
 			ss_real_server_ip="8.8.8.8"
 		fi
-		https_dns_proxy -u nobody -p 7913 -b 1.1.1.1,1.0.0.1 -e $ss_real_server_ip/16 -r "https://cloudflare-dns.com/dns-query?ct=application/dns-json&" -d
+		https_dns_proxy -u nobody -p 7913 -b 8.8.8.8,1.1.1.1,8.8.4.4,1.0.0.1,145.100.185.15,145.100.185.16,185.49.141.37 -e $ss_real_server_ip/16 -r "https://cloudflare-dns.com/dns-query?ct=application/dns-json&" -d
 	fi
 	
 	# start v2ray DNS_PORT
@@ -569,7 +576,7 @@ start_dns(){
 #--------------------------------------------------------------------------------------
 
 detect_domain(){
-	domain1=`echo $1|grep -E "^https://|^http://"`
+	domain1=`echo $1|grep -E "^https://|^http://|www|/"`
 	domain2=`echo $1|grep -E "\."`
 	if [ -n "$domain1" ] || [ -z "$domain2" ];then
 		return 1
@@ -606,8 +613,8 @@ create_dnsmasq_conf(){
 	[ "$ss_dns_china" == "5" ] && CDN="114.114.115.115"
 	[ "$ss_dns_china" == "6" ] && CDN="1.2.4.8"
 	[ "$ss_dns_china" == "7" ] && CDN="210.2.4.8"
-	[ "$ss_dns_china" == "8" ] && CDN="112.124.47.27"
-	[ "$ss_dns_china" == "9" ] && CDN="114.215.126.16"
+	[ "$ss_dns_china" == "8" ] && CDN="117.50.11.11"
+	[ "$ss_dns_china" == "9" ] && CDN="117.50.22.22"
 	[ "$ss_dns_china" == "10" ] && CDN="180.76.76.76"
 	[ "$ss_dns_china" == "11" ] && CDN="119.29.29.29"
 	[ "$ss_dns_china" == "12" ] && {
@@ -661,21 +668,29 @@ create_dnsmasq_conf(){
 		do
 			detect_domain "$wan_white_domain"
 			if [ "$?" == "0" ];then
-				echo "$wan_white_domain" | sed "s/^/server=&\/./g" | sed "s/$/\/$CDN#53/g" >> /tmp/wblist.conf
-				echo "$wan_white_domain" | sed "s/^/ipset=&\/./g" | sed "s/$/\/white_list/g" >> /tmp/wblist.conf
+				# 回国模式下，用外国DNS，否则用中国DNS。
+				if [ "$ss_basic_mode" != "6" ];then
+					echo "$wan_white_domain" | sed "s/^/server=&\/./g" | sed "s/$/\/$CDN#53/g" >> /tmp/wblist.conf
+					echo "$wan_white_domain" | sed "s/^/ipset=&\/./g" | sed "s/$/\/white_list/g" >> /tmp/wblist.conf
+				else
+					echo "$wan_white_domain" | sed "s/^/server=&\/./g" | sed "s/$/\/$ss_direct_user/g" >> /tmp/wblist.conf
+					echo "$wan_white_domain" | sed "s/^/ipset=&\/./g" | sed "s/$/\/white_list/g" >> /tmp/wblist.conf
+				fi
 			else
 				echo_date ！！检测到域名白名单内的【"$wan_white_domain"】不是域名格式！！此条将不会添加！！
 			fi
 		done
 	fi
 	
-	# apple 和 microsoft不能走ss
-	echo "#for special site" >> /tmp/wblist.conf
-	for wan_white_domain2 in "apple.com" "microsoft.com"
-	do 
-		echo "$wan_white_domain2" | sed "s/^/server=&\/./g" | sed "s/$/\/$CDN#53/g" >> /tmp/wblist.conf
-		echo "$wan_white_domain2" | sed "s/^/ipset=&\/./g" | sed "s/$/\/white_list/g" >> /tmp/wblist.conf
-	done
+	# 非回国模式下，apple 和 microsoft需要中国cdn
+	if [ "$ss_basic_mode" != "6" ];then
+		echo "#for special site" >> /tmp/wblist.conf
+		for wan_white_domain2 in "apple.com" "microsoft.com"
+		do 
+			echo "$wan_white_domain2" | sed "s/^/server=&\/./g" | sed "s/$/\/$CDN#53/g" >> /tmp/wblist.conf
+			echo "$wan_white_domain2" | sed "s/^/ipset=&\/./g" | sed "s/$/\/white_list/g" >> /tmp/wblist.conf
+		done
+	fi
 	
 	# append black domain list, through ss
 	wanblackdomain=$(echo $ss_wan_black_domain | base64_decode)
@@ -686,27 +701,32 @@ create_dnsmasq_conf(){
 		do
 			detect_domain "$wan_black_domain"
 			if [ "$?" == "0" ];then
-				echo "$wan_black_domain" | sed "s/^/server=&\/./g" | sed "s/$/\/127.0.0.1#7913/g" >> /tmp/wblist.conf
-				echo "$wan_black_domain" | sed "s/^/ipset=&\/./g" | sed "s/$/\/black_list/g" >> /tmp/wblist.conf
+				if [ "$ss_basic_mode" != "6" ];then
+					echo "$wan_black_domain" | sed "s/^/server=&\/./g" | sed "s/$/\/127.0.0.1#7913/g" >> /tmp/wblist.conf
+					echo "$wan_black_domain" | sed "s/^/ipset=&\/./g" | sed "s/$/\/black_list/g" >> /tmp/wblist.conf
+				else
+					echo "$wan_black_domain" | sed "s/^/server=&\/./g" | sed "s/$/\/$CDN#53/g" >> /tmp/wblist.conf
+					echo "$wan_black_domain" | sed "s/^/ipset=&\/./g" | sed "s/$/\/black_list/g" >> /tmp/wblist.conf
+				fi
 			else
 				echo_date ！！检测到域名黑名单内的【"$wan_black_domain"】不是域名格式！！此条将不会添加！！
 			fi
 		done
 	fi
 
-	# 使用cdn.txt和gfwlist的策略
-	# cdn.txt的作用：cdn.txt内包含了4万多条国内的网站，基本包含了普通人的所有国内上网需求，使用cdn.txt会让里面指定的网站强制走中国DNS的解析
+	# 使用cdn.conf和gfwlist的策略
+	# cdn.conf的作用：cdn.conf内包含了4万多条国内的网站，基本包含了普通人的所有国内上网需求，使用cdn.conf会让里面指定的网站强制走中国DNS的解析
 	# gfwlist的主用：gfwlist内包含了已知的被墙网站，大部分人的翻墙需求（google, youtube, netflix, etc...），能得到满足，使用gfwlist会让里面指定的网站走国外的dns解析（墙内出去需要防污染，墙外进来直连即可）
-	# 1.1 在国内优先模式下（在墙内出去），dnsmasq的全局dns是中国的，所以不需要cdn.txt，此时对路由的dnsmasq的负担也较小，但是为了保证国外被墙的网站解析无污染，使用gfwlist来解析国外被墙网站（此处需要防污染的软件来获得正确dns，如dns2socks的转发方式，chinadns的过滤方式，cdns的edns的特殊获取方式等），这样如果遇到gfwlist漏掉的，或者上普通未被墙的国外网站可能速度较慢；
-	# 1.2 在国内优先模式下（在墙外回来），dnsmasq的全局dns是中国的，所以不需要cdn.txt，此时对路由的dnsmasq的负担也较小，但是为了保证国外被墙的网站解析无污染，使用gfwlist来解析国外被墙网站（因为本来身在国外，直连国外当地dns即可，如果转发，则会让这些请求在国内vps上去做，导致污染，如果使用chinadns过滤，则无需指定通过转发的），但是这样会导致很多国外网站的访问是从国内的vps发起的，导致一些国外网站的体验不好
+	# 1.1 在国内优先模式下（在墙内出去），dnsmasq的全局dns是中国的，所以不需要cdn.conf，此时对路由的dnsmasq的负担也较小，但是为了保证国外被墙的网站解析无污染，使用gfwlist来解析国外被墙网站（此处需要防污染的软件来获得正确dns，如dns2socks的转发方式，chinadns的过滤方式，cdns的edns的特殊获取方式等），这样如果遇到gfwlist漏掉的，或者上普通未被墙的国外网站可能速度较慢；
+	# 1.2 在国内优先模式下（在墙外回来），dnsmasq的全局dns是中国的，所以不需要cdn.conf，此时对路由的dnsmasq的负担也较小，但是为了保证国外被墙的网站解析无污染，使用gfwlist来解析国外被墙网站（因为本来身在国外，直连国外当地dns即可，如果转发，则会让这些请求在国内vps上去做，导致污染，如果使用chinadns过滤，则无需指定通过转发的），但是这样会导致很多国外网站的访问是从国内的vps发起的，导致一些国外网站的体验不好
 	
-	# 2.1 在国外优先的模式下（在墙内出去），dnsmasq的全局dns是国外的（此处需要使用防污染的软件来获得正确的dns），但是要保证国内的网站的解析效果，只好引入cdn.txt，此时路由的负担也会较大，这样国内的网站解析效果完全靠cdn.tx，一般来说能普通人的所有国内上网需求
-	# 2.2 在国外优先的模式下（在墙外回来），dnsmasq的全局dns是国外的（此处只需要直连国外当地的dns服务器即可！），但是要保证国内的网站的解析效果，只好引入cdn.txt，此时路由的负担也会较大，这样国内的网站解析效果完全靠cdn.txt，一般来说翻墙回来都是看国内影视剧和音乐等需要，cdn.txt应该能够满足。
+	# 2.1 在国外优先的模式下（在墙内出去），dnsmasq的全局dns是国外的（此处需要使用防污染的软件来获得正确的dns），但是要保证国内的网站的解析效果，只好引入cdn.conf，此时路由的负担也会较大，这样国内的网站解析效果完全靠cdn.conf，一般来说能普通人的所有国内上网需求
+	# 2.2 在国外优先的模式下（在墙外回来），dnsmasq的全局dns是国外的（此处只需要直连国外当地的dns服务器即可！），但是要保证国内的网站的解析效果，只好引入cdn.conf，此时路由的负担也会较大，这样国内的网站解析效果完全靠cdn.conf，一般来说翻墙回来都是看国内影视剧和音乐等需要，cdn.conf应该能够满足。
 
 	# 总结
-	# 国内优先模式，使用gfwlist，不用cdn.txt，国内cdn好，国外cdn差，路由器负担小
-	# 国外优先模式，不用gfwlist，使用cdn.txt，国内cdn好，国外cdn好，路由器负担大（dns2socks ss-tunnel，cdns）
-	# 国外优先模式，如果dns自带了国内cdn，不用gfwlist，不用cdn.txt，国内cdn好，国外cdn好，路由器负小（chinadns1 chinadns2）
+	# 国内优先模式，使用gfwlist，不用cdn.conf，国内cdn好，国外cdn差，路由器负担小
+	# 国外优先模式，不用gfwlist，使用cdn.conf，国内cdn好，国外cdn好，路由器负担大（dns2socks ss-tunnel，cdns）
+	# 国外优先模式，如果dns自带了国内cdn，不用gfwlist，不用cdn.conf，国内cdn好，国外cdn好，路由器负小（chinadns1 chinadns2）
 
 	# 使用场景 
 	# 1.1 gfwlist模式：该模式的特点就是只有gfwlist内的网站走代理，所以dns部分也应该是相同的策略，即国内优先模式。
@@ -722,24 +742,24 @@ create_dnsmasq_conf(){
 
 	if [ "$ss_basic_mode" == "6" ];then
 		# 回国模式中，因为国外DNS无论如何都不会污染的，所以采取的策略是直连就行，默认国内优先即可
-		echo_date 自动判断在回国模式中使用国内优先模式，不加载cdn.txt
+		echo_date 自动判断在回国模式中使用国内优先模式，不加载cdn.conf
 	else
 		if [ "$ss_basic_mode" == "1" -a -z "$chn_on" -a -z "$all_on" ] || [ "$ss_basic_mode" == "6" ];then
 			# gfwlist模式的时候，且访问控制主机中不存在 大陆白名单模式 游戏模式 全局模式，则使用国内优先模式
 			# 回国模式下自动判断使用国内优先
-			echo_date 自动判断使用国内优先模式，不加载cdn.txt
+			echo_date 自动判断使用国内优先模式，不加载cdn.conf
 		else
 			# 其它情况，均使用国外优先模式
 			if [ "$ss_foreign_dns" != "2" ] && [ "$ss_foreign_dns" != "5" ];then
-				# 因为chinadns1 chinadns2自带国内cdn，所以也不需要cdn.txt
+				# 因为chinadns1 chinadns2自带国内cdn，所以也不需要cdn.conf
 				echo_date 自动判断dns解析使用国外优先模式...
-				echo_date 你选择的解析方案【$(get_dns_name $ss_foreign_dns)】无国内cdn，需要加载cdn.txt，路由器开销较大...
+				echo_date 你选择的解析方案【$(get_dns_name $ss_foreign_dns)】无国内cdn，需要加载cdn.conf，路由器开销较大...
 				echo_date 生成cdn加速列表到/tmp/sscdn.conf，加速用的dns：$CDN
 				echo "#for china site CDN acclerate" >> /tmp/sscdn.conf
 				cat /jffs/softcenter/ss/rules/cdn.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$CDN/g" | sort | awk '{if ($0!=line) print;line=$0}' >>/tmp/sscdn.conf
 			else
 				echo_date 自动判断dns解析使用国外优先模式...
-				echo_date 你选择解析方案【$(get_dns_name $ss_foreign_dns)】自带国内cdn，不许需要加载cdn.txt，路由器开销小...
+				echo_date 你选择解析方案【$(get_dns_name $ss_foreign_dns)】自带国内cdn，无需加载cdn.conf，路由器开销小...
 			fi
 		fi
 	fi
@@ -760,11 +780,11 @@ create_dnsmasq_conf(){
 	fi
 
 	if [ "$ss_basic_mode" == "1" ];then
-		echo_date 创建gfwlist的软连接到/jffs/etc/dnsmasq.d/文件夹.
+		echo_date 创建gfwlist的软连接到/tmp/etc/dnsmasq.user/文件夹.
 		ln -sf /jffs/softcenter/ss/rules/gfwlist.conf /tmp/etc/dnsmasq.user/gfwlist.conf
 	elif [ "$ss_basic_mode" == "2" ] || [ "$ss_basic_mode" == "3" ];then
 		if [ -n "$gfw_on" ];then
-			echo_date 创建gfwlist的软连接到/jffs/etc/dnsmasq.d/文件夹.
+			echo_date 创建gfwlist的软连接到/tmp/etc/dnsmasq.user/文件夹.
 			ln -sf /jffs/softcenter/ss/rules/gfwlist.conf /tmp/etc/dnsmasq.user/gfwlist.conf
 		fi
 	elif [ "$ss_basic_mode" == "6" ];then
@@ -784,45 +804,61 @@ create_dnsmasq_conf(){
 	[ ! -L "/jffs/scripts/dnsmasq.postconf" ] && ln -sf /jffs/softcenter/ss/rules/dnsmasq.postconf /jffs/scripts/dnsmasq.postconf
 }
 
-start_jitterentropy(){
-	jitterentropy-rngd >/dev/null 2>&1
+start_haveged(){
+	echo_date "启动haveged，为系统提供更多的可用熵！"
+	haveged -w 1024 >/dev/null 2>&1
+}
+
+write_nat_start(){
+	echo_date "添加nat-start触发事件..."
+	dbus set __event__onnatstart_shadowsocks="/jffs/softcenter/ss/ssconfig.sh"
+}
+
+remove_nat_start(){
+	[ -n "`dbus get __event__onnatstart_shadowsocks`" ] && {
+		echo_date "删除nat-start触发..."
+		dbus remove __event__onnatstart_shadowsocks
+	}
 }
 
 auto_start(){
-	# nat_auto_start
-	mkdir -p /jffs/scripts
-	# creating iptables rules to nat-start
-	if [ ! -f /jffs/scripts/nat-start ]; then
-	cat > /jffs/scripts/nat-start <<-EOF
-		#!/bin/sh
-		dbus fire onnatstart
-		
-		EOF
-	fi
+	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
+	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
 	
-	writenat=$(cat /jffs/scripts/nat-start | grep "ssconfig")
-	if [ -z "$writenat" ];then
-		echo_date 添加nat-start触发事件...用于ss的nat规则重启后或网络恢复后的加载...
-		sed -i '2a sh /jffs/softcenter/ss/ssconfig.sh' /jffs/scripts/nat-start
-		chmod +x /jffs/scripts/nat-start
-	fi
+	# nat_auto_start
+	#mkdir -p /jffs/scripts
+	# creating iptables rules to nat-start
+	#if [ ! -f /jffs/scripts/nat-start ]; then
+	#cat > /jffs/scripts/nat-start <<-EOF
+	#	#!/bin/sh
+	#	dbus fire onnatstart
+	#	
+	#	EOF
+	#fi
+	
+	#writenat=$(cat /jffs/scripts/nat-start | grep "ssconfig")
+	#if [ -z "$writenat" ];then
+	#	echo_date 添加nat-start触发事件...用于ss的nat规则重启后或网络恢复后的加载...
+	#	sed -i '2a sh /jffs/softcenter/ss/ssconfig.sh' /jffs/scripts/nat-start
+	#	chmod +x /jffs/scripts/nat-start
+	#fi
 
 	# wan_auto_start
 	# Add service to auto start
-	if [ ! -f /jffs/scripts/wan-start ]; then
-		cat > /jffs/scripts/wan-start <<-EOF
-			#!/bin/sh
-			dbus fire onwanstart
-			
-			EOF
-	fi
+	#if [ ! -f /jffs/scripts/wan-start ]; then
+	#	cat > /jffs/scripts/wan-start <<-EOF
+	#		#!/bin/sh
+	#		dbus fire onwanstart
+	#		
+	#		EOF
+	#fi
 	
-	startss=$(cat /jffs/scripts/wan-start | grep "/jffs/softcenter/scripts/ss_config.sh")
-	if [ -z "$startss" ];then
-		echo_date 添加wan-start触发事件...用于ss的各种程序的开机启动...
-		sed -i '2a sh /jffs/softcenter/scripts/ss_config.sh' /jffs/scripts/wan-start
-	fi
-	chmod +x /jffs/scripts/wan-start
+	#startss=$(cat /jffs/scripts/wan-start | grep "/jffs/softcenter/scripts/ss_config.sh")
+	#if [ -z "$startss" ];then
+	#	echo_date 添加wan-start触发事件...用于ss的各种程序的开机启动...
+	#	sed -i '2a sh /jffs/softcenter/scripts/ss_config.sh' /jffs/scripts/wan-start
+	#fi
+	#chmod +x /jffs/scripts/wan-start
 }
 
 start_kcp(){
@@ -938,6 +974,8 @@ start_ss_redir(){
 		BIN=rss-redir
 		ARG_OBFS=""
 	elif  [ "$ss_basic_type" == "0" ];then
+		# ss-libev需要大于160的熵才能正常工作
+		start_haveged
 		echo_date 开启ss-redir进程，用于透明代理.
 		if [ "$ss_basic_ss_obfs" == "0" ];then
 			BIN=ss-redir
@@ -1072,11 +1110,11 @@ start_koolgame(){
 
 get_function_switch() {
 	case "$1" in
-		0)
-			echo "false"
-		;;
 		1)
 			echo "true"
+		;;
+		0|*)
+			echo "false"
 		;;
 	esac
 }
@@ -1427,9 +1465,9 @@ creat_v2ray_json(){
 
 start_v2ray(){
 	cd /jffs/softcenter/bin
-	export GOGC=30
+	#export GOGC=30
 	v2ray --config=/jffs/softcenter/ss/v2ray.json >/dev/null 2>&1 &
-	
+	local V2PID
 	local i=10
 	until [ -n "$V2PID" ]
 	do
@@ -1458,7 +1496,7 @@ write_cron_job(){
 			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * * /jffs/softcenter/scripts/ss_online_update.sh 3"
 			echo_date "设置订阅服务器自动更新订阅服务器在每天 $ss_basic_node_update_hr 点。"
 		else
-			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * ss_basic_node_update_day /jffs/softcenter/scripts/ss_online_update.sh 3"
+			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * $ss_basic_node_update_day /jffs/softcenter/scripts/ss_online_update.sh 3"
 			echo_date "设置订阅服务器自动更新订阅服务器在星期 $ss_basic_node_update_day 的 $ss_basic_node_update_hr 点。"
 		fi
 	fi
@@ -1582,7 +1620,8 @@ add_white_black_ip(){
 	fi
 	
 	if [ -n "$ss_wan_black_ip" ];then
-		ss_wan_black_ip=`dbus get ss_wan_black_ip|base64_decode|sed '/\#/d'`
+		$ss_wan_black_ip=`dbus get ss_wan_black_ip|base64_decode|sed '/\#/d'`
+		ss_wan_black_ip=`echo $ss_wan_black_ip|base64_decode|sed '/\#/d'`
 		echo_date 应用IP/CIDR黑名单
 		for ip in $ss_wan_black_ip
 		do
@@ -1594,7 +1633,7 @@ add_white_black_ip(){
 	[ -n "$ss_basic_server_ip" ] && SERVER_IP="$ss_basic_server_ip" || SERVER_IP=""
 	[ -n "$IFIP_DNS1" ] && ISP_DNS_a="$ISP_DNS1" || ISP_DNS_a=""
 	[ -n "$IFIP_DNS2" ] && ISP_DNS_b="$ISP_DNS2" || ISP_DNS_a=""
-	ip_lan="0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12 192.168.0.0/16 224.0.0.0/4 240.0.0.0/4 223.5.5.5 223.6.6.6 114.114.114.114 114.114.115.115 1.2.4.8 210.2.4.8 112.124.47.27 114.215.126.16 180.76.76.76 119.29.29.29 $ISP_DNS_a $ISP_DNS_b $SERVER_IP $(get_wan0_cidr)"
+	ip_lan="0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12 192.168.0.0/16 224.0.0.0/4 240.0.0.0/4 223.5.5.5 223.6.6.6 114.114.114.114 114.114.115.115 1.2.4.8 210.2.4.8 117.50.11.11 117.50.22.22 180.76.76.76 119.29.29.29 $ISP_DNS_a $ISP_DNS_b $SERVER_IP $(get_wan0_cidr)"
 	for ip in $ip_lan
 	do
 		ipset -! add white_list $ip >/dev/null 2>&1
@@ -1816,11 +1855,15 @@ apply_nat_rules(){
 
 chromecast(){
 	chromecast_nu=`iptables -t nat -L PREROUTING -v -n --line-numbers|grep "dpt:53"|awk '{print $1}'`
-	if [ -z "$chromecast_nu" ]; then
-		iptables -t nat -A PREROUTING -p udp -s $(get_lan_cidr) --dport 53 -j DNAT --to $lan_ipaddr >/dev/null 2>&1
-		echo_date 开启chromecast功能（DNS劫持功能）
+	if [ "$ss_basic_dns_hijack" == "1" ];then
+		if [ -z "$chromecast_nu" ]; then
+			iptables -t nat -A PREROUTING -p udp -s $(get_lan_cidr) --dport 53 -j DNAT --to $lan_ipaddr >/dev/null 2>&1
+			echo_date 开启DNS劫持功能功能，防止DNS污染...
+		else
+			echo_date DNS劫持规则已经添加，跳过~
+		fi
 	else
-		echo_date DNS劫持规则已经添加，跳过~
+		echo_date DNS劫持功能未开启，建议开启！
 	fi
 }
 # -----------------------------------nat part end--------------------------------------------------------
@@ -1856,7 +1899,7 @@ set_ulimit(){
 
 remove_ss_reboot_job(){
 	if [ -n "`cru l|grep ss_reboot`" ]; then
-		echo_date 删除插件自动重启定时任务...
+		echo_date "【科学上网】：删除插件自动重启定时任务..."
 		#cru d ss_reboot >/dev/null 2>&1
 		sed -i '/ss_reboot/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
 	fi
@@ -1867,28 +1910,28 @@ set_ss_reboot_job(){
 		remove_ss_reboot_job
 	elif [[	"${ss_reboot_check}" ==	"1"	]];	then
 		echo_date 设置每天${ss_basic_time_hour}时${ss_basic_time_min}分重启插件...
-		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	* *	* /jffs/softcenter/ss/ssconfig.sh	restart"
+		cru a ss_reboot ${ss_basic_time_min} ${ss_basic_time_hour}"	* *	* /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
 	elif [[	"${ss_reboot_check}" ==	"2"	]];	then
 		echo_date 设置每周${ss_basic_week}的${ss_basic_time_hour}时${ss_basic_time_min}分重启插件...
-		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	* *	"${ss_basic_week}" /jffs/softcenter/ss/ssconfig.sh restart"
+		cru a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	* *	"${ss_basic_week}" /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
 	elif [[	"${ss_reboot_check}" ==	"3"	]];	then
 		echo_date 设置每月${ss_basic_day}日${ss_basic_time_hour}时${ss_basic_time_min}分重启插件...
-		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour} ${ss_basic_day}"	* *	/jffs/softcenter/ss/ssconfig.sh restart"
+		cru a ss_reboot ${ss_basic_time_min} ${ss_basic_time_hour} ${ss_basic_day}"	* *	/bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
 	elif [[	"${ss_reboot_check}" ==	"4"	]];	then
 		if [[ "${ss_basic_inter_pre}" == "1" ]]; then
 			echo_date 设置每隔${ss_basic_inter_min}分钟重启插件...
-			cru	a ss_reboot	"*/"${ss_basic_inter_min}" * * * * /jffs/softcenter/ss/ssconfig.sh restart"
+			cru a ss_reboot	"*/"${ss_basic_inter_min}" * * * * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
 		elif [[	"${ss_basic_inter_pre}"	== "2" ]]; then
 			echo_date 设置每隔${ss_basic_inter_hour}小时重启插件...
-			cru	a ss_reboot	"0 */"${ss_basic_inter_hour}" *	* *	/jffs/softcenter/ss/ssconfig.sh restart"
+			cru a ss_reboot	"0 */"${ss_basic_inter_hour}" *	* * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
 		elif [[	"${ss_basic_inter_pre}"	== "3" ]]; then
 			echo_date 设置每隔${ss_basic_inter_day}天${ss_basic_inter_hour}小时${ss_basic_time_min}分钟重启插件...
-			cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	*/"${ss_basic_inter_day} " * * /jffs/softcenter/ss/ssconfig.sh restart"
+			cru a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	*/"${ss_basic_inter_day} " * * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
 		fi
 	elif [[	"${ss_reboot_check}" ==	"5"	]];	then
 		check_custom_time=`dbus	get	ss_basic_custom	| base64_decode`
 		echo_date 设置每天${check_custom_time}时的${ss_basic_time_min}分重启插件...
-		cru	a ss_reboot	${ss_basic_time_min} ${check_custom_time}" * * * /jffs/softcenter/ss/ssconfig.sh restart"
+		cru a ss_reboot	${ss_basic_time_min} ${check_custom_time}" * * * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
 	else
 		remove_ss_reboot_job
 	fi
@@ -1896,9 +1939,10 @@ set_ss_reboot_job(){
 
 remove_ss_trigger_job(){
 	if [ -n "`cru l|grep ss_tri_check`" ]; then
-		echo_date 删除插件触发重启定时任务...
-		#cru d ss_tri_check >/dev/null 2>&1
+		echo_date "删除插件触发重启定时任务..."
 		sed -i '/ss_tri_check/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
+	else
+		echo_date "插件触发重启定时任务已经删除..."
 	fi
 }
 
@@ -2035,6 +2079,7 @@ apply_ss(){
 	remove_ss_trigger_job
 	remove_ss_reboot_job
 	restore_conf
+	remove_nat_start
 	# restart dnsmasq when ss server is not ip or on router boot
 	restart_dnsmasq
 	flush_nat
@@ -2050,7 +2095,7 @@ apply_ss(){
 	load_module
 	creat_ipset
 	create_dnsmasq_conf
-	start_jitterentropy
+	write_nat_start
 	sleep 1
 	#get_status
 	# do not re generate json on router start, use old one
@@ -2124,9 +2169,10 @@ start)
 stop)
 	set_lock
 	ss_pre_stop
+	remove_nat_start
 	disable_ss
 	echo_date
-	echo_date 你已经成功关闭shadowsocks服务~
+	echo_date 你已经成功关闭科学上网服务~
 	echo_date See you again!
 	echo_date
 	echo_date ======================= 梅林固件 - 【科学上网】 ========================
@@ -2153,9 +2199,12 @@ flush_nat)
 *)
 	set_lock
 	if [ "$ss_basic_enable" == "1" ];then
+		logger "[软件中心]: 启动科学上网插件！"
 		set_ulimit
 		apply_ss
 		write_numbers
+	else
+		logger "[软件中心]: 科学上网插件未开启，不启动！"
 	fi
 	#get_status >> /tmp/ss_start.txt
 	unset_lock
