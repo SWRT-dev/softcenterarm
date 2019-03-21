@@ -109,11 +109,11 @@ if [ -n "`ls /tmp/ss_backup/P*.sh 2>/dev/null`" ];then
 fi
 
 echo_date 创建一些二进制文件的软链接！
-[ ! -L "/jffs/softcenter/bin/rss-tunnel" ] && cp -rf /jffs/softcenter/bin/rss-local /jffs/softcenter/bin/rss-tunnel
-[ ! -L "/jffs/softcenter/bin/base64" ] && cp -rf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/base64
-[ ! -L "/jffs/softcenter/bin/shuf" ] && cp -rf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/shuf
-[ ! -L "/jffs/softcenter/bin/netstat" ] && cp -rf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/netstat
-[ ! -L "/jffs/softcenter/bin/base64_decode" ] && cp -rf /jffs/softcenter/bin/base64_encode /jffs/softcenter/bin/base64_decode
+[ ! -L "/jffs/softcenter/bin/rss-tunnel" ] && ln -sf /jffs/softcenter/bin/rss-local /jffs/softcenter/bin/rss-tunnel
+[ ! -L "/jffs/softcenter/bin/base64" ] && ln -sf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/base64
+[ ! -L "/jffs/softcenter/bin/shuf" ] && ln -sf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/shuf
+[ ! -L "/jffs/softcenter/bin/netstat" ] && ln -sf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/netstat
+[ ! -L "/jffs/softcenter/bin/base64_decode" ] && ln -s /jffs/softcenter/bin/base64_encode /jffs/softcenter/bin/base64_decode
 [ ! -L "/jffs/softcenter/init.d/S99socks5.sh" ] && ln -sf /jffs/softcenter/scripts/ss_socks5.sh /jffs/softcenter/init.d/S99socks5.sh
 [ ! -L "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
 [ ! -L "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
