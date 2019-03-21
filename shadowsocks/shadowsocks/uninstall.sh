@@ -37,6 +37,10 @@ rm -rf /jffs/softcenter/bin/jitterentropy-rngd
 rm -rf /jffs/softcenter/bin/haveged
 rm -rf /jffs/softcenter/bin/https_dns_proxy
 rm -rf /jffs/softcenter/bin/dnsmasq
+rm -rf /jffs/softcenter/bin/base64
+rm -rf /jffs/softcenter/bin/shuf
+rm -rf /jffs/softcenter/bin/netstat
+rm -rf /jffs/softcenter/bin/base64_decode
 rm -rf /jffs/softcenter/res/layer
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/icon-shadowsocks.png
