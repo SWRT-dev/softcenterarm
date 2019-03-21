@@ -55,7 +55,7 @@ rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/gameV2.png
 rm -rf /jffs/softcenter/res/ss_proc_status.htm
 rm -rf /jffs/softcenter/res/ss_udp_status.htm
-rm -rf /jffs/softcenter/res/v2ray_log.htm
+#rm -rf /jffs/softcenter/res/v2ray_log.htm
 rm -rf /jffs/softcenter/configs/ss_conf.sh
 rm -rf /jffs/softcenter/init.d/S89Socks5.sh
 rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
