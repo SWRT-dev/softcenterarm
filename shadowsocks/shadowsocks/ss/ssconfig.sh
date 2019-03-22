@@ -803,11 +803,11 @@ create_dnsmasq_conf(){
 	fi
 
 	if [ "$ss_basic_mode" == "1" ];then
-		echo_date 创建gfwlist的软连接到/jffs/etc/dnsmasq.d/文件夹.
+		echo_date 创建gfwlist的软连接到/tmp/etc/dnsmasq.user/文件夹.
 		ln -sf /jffs/softcenter/ss/rules/gfwlist.conf /tmp/etc/dnsmasq.user/gfwlist.conf
 	elif [ "$ss_basic_mode" == "2" ] || [ "$ss_basic_mode" == "3" ];then
 		if [ -n "$gfw_on" ];then
-			echo_date 创建gfwlist的软连接到/jffs/etc/dnsmasq.d/文件夹.
+			echo_date 创建gfwlist的软连接到/tmp/etc/dnsmasq.user/文件夹.
 			ln -sf /jffs/softcenter/ss/rules/gfwlist.conf /tmp/etc/dnsmasq.user/gfwlist.conf
 		fi
 	elif [ "$ss_basic_mode" == "6" ];then
@@ -817,7 +817,7 @@ create_dnsmasq_conf(){
 			ss_direct_user="8.8.8.8#53"
 			dbus set ss_direct_user="8.8.8.8#53"
 		fi
-		echo_date 创建回国模式专用gfwlist的软连接到/jffs/etc/dnsmasq.d/文件夹.
+		echo_date 创建回国模式专用gfwlist的软连接到/tmp/etc/dnsmasq.user/文件夹.
 		[ -z "$ss_direct_user" ] && ss_direct_user="8.8.8.8#53"
 		cat /jffs/softcenter/ss/rules/gfwlist.conf|sed "s/127.0.0.1#7913/$ss_direct_user/g" > /tmp/gfwlist.conf
 		ln -sf /tmp/gfwlist.conf /tmp/etc/dnsmasq.user/gfwlist.conf
@@ -1133,11 +1133,11 @@ start_koolgame(){
 
 get_function_switch() {
 	case "$1" in
-		0)
-			echo "false"
-		;;
 		1)
 			echo "true"
+		;;
+		0|*)
+			echo "false"
 		;;
 	esac
 }
@@ -1485,8 +1485,8 @@ create_v2ray_json(){
 		echo_date $result
 		echo_date V2Ray配置文件通过测试!!!
 	else
-		rm -rf "$V2RAY_CONFIG_FILE_TMP"
-		rm -rf "$V2RAY_CONFIG_FILE"
+		#rm -rf "$V2RAY_CONFIG_FILE_TMP"
+		#rm -rf "$V2RAY_CONFIG_FILE"
 		echo_date V2Ray配置文件没有通过测试，请检查设置!!!
 		close_in_five
 	fi
@@ -1496,7 +1496,7 @@ start_v2ray(){
 	cd /jffs/softcenter/bin
 	#export GOGC=30
 	v2ray -config=/jffs/softcenter/ss/v2ray.json >/dev/null 2>&1 &
-	
+	#local V2PID
 	local i=10
 	until [ -n "$V2PID" ]
 	do
@@ -1522,10 +1522,10 @@ write_cron_job(){
 	sed -i '/ssnodeupdate/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
 	if [ "$ss_basic_node_update" = "1" ];then
 		if [ "$ss_basic_node_update_day" = "7" ];then
-			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * * /jffs/softcenter/scripts/ss_online_update.sh 3"
+			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * * /bin/sh /jffs/softcenter/scripts/ss_online_update.sh 3"
 			echo_date "设置订阅服务器自动更新订阅服务器在每天 $ss_basic_node_update_hr 点。"
 		else
-			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * $ss_basic_node_update_day /jffs/softcenter/scripts/ss_online_update.sh 3"
+			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * $ss_basic_node_update_day /bin/sh /jffs/softcenter/scripts/ss_online_update.sh 3"
 			echo_date "设置订阅服务器自动更新订阅服务器在星期 $ss_basic_node_update_day 的 $ss_basic_node_update_hr 点。"
 		fi
 	fi
