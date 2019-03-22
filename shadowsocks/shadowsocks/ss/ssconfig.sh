@@ -271,7 +271,7 @@ ss_pre_start(){
 
 resolv_server_ip(){
 	if [ "$ss_basic_type" == "3" ] && [ "$ss_basic_v2ray_use_json" == "1" ];then
-		#echo_date "你使用的v2ray json配置，请自行将v2ray服务器ip地址添加到IP/CIDR白名单！"
+		#v2ray json配置在后面单独处理
 		return 1
 	else
 		IFIP=`echo $ss_basic_server|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
