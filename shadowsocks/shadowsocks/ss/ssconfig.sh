@@ -2251,7 +2251,7 @@ stop)
 	remove_nat_start
 	disable_ss
 	echo_date
-	echo_date 你已经成功关闭shadowsocks服务~
+	echo_date 你已经成功关闭科学上网服务~
 	echo_date See you again!
 	echo_date
 	echo_date ======================= 梅林固件 - 【科学上网】 ========================
