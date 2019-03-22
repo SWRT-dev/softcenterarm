@@ -37,6 +37,10 @@ rm -rf /jffs/softcenter/bin/jitterentropy-rngd
 rm -rf /jffs/softcenter/bin/haveged
 rm -rf /jffs/softcenter/bin/https_dns_proxy
 rm -rf /jffs/softcenter/bin/dnsmasq
+rm -rf /jffs/softcenter/bin/base64
+rm -rf /jffs/softcenter/bin/shuf
+rm -rf /jffs/softcenter/bin/netstat
+rm -rf /jffs/softcenter/bin/base64_decode
 rm -rf /jffs/softcenter/res/layer
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/icon-shadowsocks.png
@@ -48,13 +52,13 @@ rm -rf /jffs/softcenter/res/game.png
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/gameV2.png
 rm -rf /jffs/softcenter/res/ss_proc_status.htm
-rm -rf /jffs/softcenter/init.d/S89Socks5.sh
+rm -rf /jffs/softcenter/init.d/S99socks5.sh
 rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
 rm -rf /jffs/softcenter/init.d/N99shadowsocks.sh
 
 # remove start up command
-sed -i '/ssconfig.sh/d' /jffs/softcenter/scripts/wan-start >/dev/null 2>&1
-sed -i '/ssconfig.sh/d' /jffs/softcenter/scripts/nat-start >/dev/null 2>&1
+sed -i '/ssconfig.sh/d' /jffs/scripts/wan-start >/dev/null 2>&1
+sed -i '/ssconfig.sh/d' /jffs/scripts/nat-start >/dev/null 2>&1
 
 dbus remove softcenter_module_shadowsocks_home_url
 dbus remove softcenter_module_shadowsocks_install
