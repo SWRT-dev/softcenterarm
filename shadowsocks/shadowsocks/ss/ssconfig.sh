@@ -253,15 +253,15 @@ ss_pre_start(){
 	if [ "$lb_enable" == "1" ];then
 		echo_date ---------------------- 【科学上网】 启动前触发脚本 ----------------------
 		if [ `dbus get ss_basic_server | grep -o "127.0.0.1"` ] && [ `dbus get ss_basic_port` == `dbus get ss_lb_port` ];then
-			echo_date ss启动前触发:触发启动负载均衡功能！
+			echo_date 插件启动前触发:触发启动负载均衡功能！
 			#start haproxy
 			sh /jffs/softcenter/scripts/ss_lb_config.sh
 		else
-			echo_date ss启动前触发:未选择负载均衡节点，不触发负载均衡启动！
+			echo_date 插件启动前触发:未选择负载均衡节点，不触发负载均衡启动！
 		fi
 	else
 		if [ `dbus get ss_basic_server | grep -o "127.0.0.1"` ] && [ `dbus get ss_basic_port` == `dbus get ss_lb_port` ];then
-			echo_date ss启动前触发【警告】：你选择了负载均衡节点，但是负载均衡开关未启用！！
+			echo_date 插件启动前触发:【警告】：你选择了负载均衡节点，但是负载均衡开关未启用！！
 		#else
 			#echo_date ss启动前触发：你选择了普通节点，不触发负载均衡启动！
 		fi
@@ -278,12 +278,12 @@ resolv_server_ip(){
 		if [ -z "$IFIP" ];then
 			# 服务器地址强制由114解析，以免插件还未开始工作而导致解析失败
 			echo "server=/$ss_basic_server/$(get_server_resolver)#53" > /tmp/etc/dnsmasq.user/ss_server.conf
-			echo_date 尝试解析SS服务器的ip地址，DNS：$(get_server_resolver)
+			echo_date 尝试解析服务器的ip地址，DNS：$(get_server_resolver)
 			server_ip=`nslookup "$ss_basic_server" $(get_server_resolver) | sed '1,4d' | awk '{print $3}' | grep -v :|awk 'NR==1{print}'`
 			if [ "$?" == "0" ];then
 				server_ip=`echo $server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
 			else
-				echo_date SS服务器域名解析失败！
+				echo_date 服务器域名解析失败！
 				echo_date 尝试用resolveip方式解析，DNS：系统
 				server_ip=`resolveip -4 -t 2 $ss_basic_server|awk 'NR==1{print}'`
 				if [ "$?" == "0" ];then
@@ -292,7 +292,7 @@ resolv_server_ip(){
 			fi
 
 			if [ -n "$server_ip" ];then
-				echo_date SS服务器的ip地址解析成功：$server_ip
+				echo_date 服务器的ip地址解析成功：$server_ip
 				# 解析并记录一次ip，方便插件触发重启设定工作
 				echo "address=/$ss_basic_server/$server_ip" > /tmp/ss_host.conf
 				# 去掉此功能，以免ip发生变更导致问题，或者影响域名对应的其它二级域名
@@ -302,12 +302,12 @@ resolv_server_ip(){
 				dbus set ss_basic_server_ip="$server_ip"
 			else
 				dbus remvoe ss_basic_server_ip
-				echo_date SS服务器的ip地址解析失败，将由ss-redir自己解析.
+				echo_date 服务器的ip地址解析失败，将由ss-redir自己解析.
 			fi
 		else
 			ss_basic_server_ip="$ss_basic_server"
 			dbus set ss_basic_server_ip=$ss_basic_server
-			echo_date 检测到你的SS服务器已经是IP格式：$ss_basic_server,跳过解析... 
+			echo_date 检测到你的服务器已经是IP格式：$ss_basic_server,跳过解析... 
 		fi
 	fi
 }
