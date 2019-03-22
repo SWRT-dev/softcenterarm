@@ -1,10 +1,12 @@
 #!/bin/sh
 
+# shadowsocks script for AM380 merlin firmware
+# by sadog (sadoneli@gmail.com) from koolshare.cn
+
 eval `dbus export ss`
 source /jffs/softcenter/scripts/base.sh
 source helper.sh
 # Variable definitions
-THREAD=$(grep -c '^processor' /proc/cpuinfo)
 alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】:'
 dbus set ss_basic_version_local=`cat /jffs/softcenter/ss/version`
 LOG_FILE=/tmp/syslog.log
@@ -17,71 +19,36 @@ ISP_DNS1=$(nvram get wan0_dns|sed 's/ /\n/g'|grep -v 0.0.0.0|grep -v 127.0.0.1|s
 ISP_DNS2=$(nvram get wan0_dns|sed 's/ /\n/g'|grep -v 0.0.0.0|grep -v 127.0.0.1|sed -n 2p)
 IFIP_DNS1=`echo $ISP_DNS1|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
 IFIP_DNS2=`echo $ISP_DNS2|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+gfw_on=`dbus list ss_acl_mode_|cut -d "=" -f 2 | grep -E "1"`
+chn_on=`dbus list ss_acl_mode_|cut -d "=" -f 2 | grep -E "2|3|4"`
+all_on=`dbus list ss_acl_mode_|cut -d "=" -f 2 | grep -E "5"`
 lan_ipaddr=$(nvram get lan_ipaddr)
 ip_prefix_hex=`nvram get lan_ipaddr | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("00/0xffffff00\n")}'`
+[ "$ss_basic_mode" == "4" ] && ss_basic_mode=3
+game_on=`dbus list ss_acl_mode|cut -d "=" -f 2 | grep 3`
+[ -n "$game_on" ] || [ "$ss_basic_mode" == "3" ] && mangle=1
+ss_basic_password=`echo $ss_basic_password|base64_decode`
 ARG_OBFS=""
 
-#-----------------------------------------------
-get_config(){
-	local cur_node=$ssconf_basic_node
-	local base_1 base_2 config key_1 key_2 tmp
-	base_1="type mode server port method password ss_obfs ss_obfs_host koolgame_udp rss_protocol rss_protocol_param rss_obfs rss_obfs_param v2ray_uuid v2ray_alterid v2ray_security v2ray_network v2ray_headtype_tcp v2ray_headtype_kcp v2ray_network_path v2ray_network_host v2ray_network_security v2ray_mux_concurrency v2ray_json"
-	base_2="enable use_kcp v2ray_use_json v2ray_mux_enable"
-	for config in $base_1 $base_2
-	do
-		key_1=ssconf_basic_${config}_${cur_node}
-		key_2=ss_basic_${config}
-		#echo key_1: $key_1
-		#echo key_2: $key_2
-		tmp="export $key_2=\$$key_1"
-		#echo_date $tmp
-		eval $tmp
-		unset key_1 key_2
-	done
-
-	gfw_on=`dbus list ss_acl_mode_|cut -d "=" -f 2 | grep -E "1"`
-	chn_on=`dbus list ss_acl_mode_|cut -d "=" -f 2 | grep -E "2|3|4"`
-	all_on=`dbus list ss_acl_mode_|cut -d "=" -f 2 | grep -E "5"`
-	game_on=`dbus list ss_acl_mode|cut -d "=" -f 2 | grep 3`
-	[ -n "$game_on" ] || [ "$ss_basic_mode" == "3" ] && mangle=1
-	ss_basic_password=`echo $ss_basic_password|base64_decode`
-	ss_basic_server_orig=$ss_basic_server
-
 # 兼容3.8.9及其以下
-	[ -z "$ss_basic_type" ] && {
-		if [ -n "$ss_basic_rss_protocol" ];then
-			ss_basic_type="1"
+[ -z "$ss_basic_type" ] && {
+	if [ -n "$ss_basic_rss_protocol" ];then
+		ss_basic_type="1"
+	else
+		if [ -n "$ss_basic_koolgame_udp" ];then
+			ss_basic_type="2"
 		else
-			if [ -n "$ss_basic_koolgame_udp" ];then
-				ss_basic_type="2"
+			if [ -n "$ss_basic_v2ray_use_json" ];then
+				ss_basic_type="3"
 			else
-				if [ -n "$ss_basic_v2ray_use_json" ];then
-					ss_basic_type="3"
-				else
-					ss_basic_type="0"
-				fi
+				ss_basic_type="0"
 			fi
 		fi
-	}
-}
-
-cmd() {
-	echo_date "$*" 2>&1
-	"$@"
-}
-
-set_lock(){
-	exec 1000>"$LOCK_FILE"
-	flock -x 1000
-}
-
-unset_lock(){
-	flock -u 1000
-	rm -rf "$LOCK_FILE"
+	fi
 }
 
 get_lan_cidr(){
-	local netmask=`nvram get lan_netmask`
+	netmask=`nvram get lan_netmask`
 	local x=${netmask##*255.}
 	set -- 0^^^128^192^224^240^248^252^254^ $(( (${#netmask} - ${#x})*2 )) ${x%%.*}
 	x=${1%%$3*}
@@ -91,7 +58,7 @@ get_lan_cidr(){
 }
 
 get_wan0_cidr(){
-	local netmask=`nvram get wan0_netmask`
+	netmask=`nvram get wan0_netmask`
 	local x=${netmask##*255.}
 	set -- 0^^^128^192^224^240^248^252^254^ $(( (${#netmask} - ${#x})*2 )) ${x%%.*}
 	x=${1%%$3*}
@@ -102,6 +69,40 @@ get_wan0_cidr(){
 	else
 		echo ""
 	fi
+}
+
+get_server_resolver(){
+	if [ "$ss_basic_server_resolver" == "1" ];then
+		if [ -n "$IFIP_DNS1" ];then
+			RESOLVER="$ISP_DNS1"
+		else
+			RESOLVER="114.114.114.114"
+		fi
+	fi
+	[ "$ss_basic_server_resolver" == "2" ] && RESOLVER="223.5.5.5"
+	[ "$ss_basic_server_resolver" == "3" ] && RESOLVER="223.6.6.6"
+	[ "$ss_basic_server_resolver" == "4" ] && RESOLVER="114.114.114.114"
+	[ "$ss_basic_server_resolver" == "5" ] && RESOLVER="114.114.115.115"
+	[ "$ss_basic_server_resolver" == "6" ] && RESOLVER="1.2.4.8"
+	[ "$ss_basic_server_resolver" == "7" ] && RESOLVER="210.2.4.8"
+	[ "$ss_basic_server_resolver" == "8" ] && RESOLVER="117.50.11.11"
+	[ "$ss_basic_server_resolver" == "9" ] && RESOLVER="117.50.22.22"
+	[ "$ss_basic_server_resolver" == "10" ] && RESOLVER="180.76.76.76"
+	[ "$ss_basic_server_resolver" == "11" ] && RESOLVER="119.29.29.29"
+	[ "$ss_basic_server_resolver" == "12" ] && {
+		[ -n "$ss_basic_server_resolver_user" ] && RESOLVER="$ss_basic_server_resolver_user" || RESOLVER="114.114.114.114"
+	}
+	echo $RESOLVER
+}
+
+set_lock(){
+	exec 1000>"$LOCK_FILE"
+	flock -x 1000
+}
+
+unset_lock(){
+	flock -u 1000
+	rm -rf "$LOCK_FILE"
 }
 
 close_in_five(){
@@ -121,126 +122,6 @@ close_in_five(){
 	exit
 }
 
-__get_type_full_name() {
-	case "$1" in
-		0)
-			echo "shadowsocks-libev"
-		;;
-		1)
-			echo "shadowsocksR-libev"
-		;;
-		2)
-			echo "koolgame"
-		;;
-		3)
-			echo "v2ray"
-		;;
-	esac
-}
-
-__get_type_abbr_name() {
-	case "$ss_basic_type" in
-		0)
-			echo "ss"
-		;;
-		1)
-			echo "ssr"
-		;;
-		2)
-			echo "koolgame"
-		;;
-		3)
-			echo "v2ray"
-		;;
-	esac
-}
-
-__valid_ip(){
-	# 验证是否为ipv4或者ipv6地址，是则正确返回，不是返回空值
-	local format_4=`echo "$1"|grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}"`
-	local format_6=`echo "$1"|grep -Eo '^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*'`
-	if [ -n "$format_4" ] && [ -z "$format_6" ];then
-		echo "$format_4"
-		return 0
-	elif [ -z "$format_4" ] && [ -n "$format_6" ];then
-		echo "$format_6"
-		return 0
-	else
-		echo ""
-		return 1
-	fi
-}
-
-__get_server_resolver(){
-	local value_1="$ss_basic_server_resolver"
-	local value_2="$ss_basic_server_resolver_user"
-	local res
-	if [ "$value_1" == "1" ];then
-		if [ -n "$IFIP_DNS1" ];then
-			res="$ISP_DNS1"
-		else
-			res="114.114.114.114"
-		fi
-	fi
-	[ "$value_1" == "2" ] && res="223.5.5.5"
-	[ "$value_1" == "3" ] && res="223.6.6.6"
-	[ "$value_1" == "4" ] && res="114.114.114.114"
-	[ "$value_1" == "5" ] && res="114.114.115.115"
-	[ "$value_1" == "6" ] && res="1.2.4.8"
-	[ "$value_1" == "7" ] && res="210.2.4.8"
-	[ "$value_1" == "8" ] && res="117.50.11.11"
-	[ "$value_1" == "9" ] && res="117.50.22.22"
-	[ "$value_1" == "10" ] && res="180.76.76.76"
-	[ "$value_1" == "11" ] && res="119.29.29.29"
-	if [ "$value_1" == "12" ];then
-		if [ -n "$value_2" ];then
-			res=$(__valid_ip "$value_2")
-			[ -z "$res" ] && res="114.114.114.114"
-		else
-			res="114.114.114.114"
-		fi
-	fi
-	echo $res
-}
-
-__get_server_resolver_port(){
-	local port
-	if [ "$ss_basic_server_resolver" == "12" ];then
-		if [ -n "$ss_basic_server_resolver_user" ];then
-			port=`echo "$ss_basic_server_resolver_user"|awk -F"#|:" '{print $2}'`
-			[ -z "$port" ] && port="53"
-		else
-			port="53"
-		fi
-	else
-		port="53"
-	fi
-	echo $port
-}
-
-__resolve_ip(){
-	local domain1=`echo "$1"|grep -E "^https://|^http://|/"`
-	local domain2=`echo "$1"|grep -E "\."`
-	if [ -n "$domain1" ] || [ -z "$domain2" ];then
-		# not ip, not domain
-		echo ""
-		return 2
-	else
-		# domain format
-		SERVER_IP=`nslookup "$1" $(__get_server_resolver):$(__get_server_resolver_port) | sed '1,4d' | awk '{print $3}' | grep -v :|awk 'NR==1{print}' 2>/dev/null`
-		SERVER_IP=$(__valid_ip $SERVER_IP)
-		if [ -n "$SERVER_IP" ];then
-			# success resolved
-			echo "$SERVER_IP"
-			return 0
-		else
-			# resolve failed
-			echo ""
-			return 1
-		fi
-	fi
-}
-
 # ================================= ss stop ===============================
 restore_conf(){
 	echo_date 删除ss相关的名单配置文件.
@@ -250,12 +131,13 @@ restore_conf(){
 	rm -rf /tmp/etc/dnsmasq.user/wblist.conf
 	rm -rf /tmp/etc/dnsmasq.user/ss_host.conf
 	rm -rf /tmp/etc/dnsmasq.user/ss_server.conf
-	rm -rf /jffs/configs/dnsmasq.conf.add
+	rm -rf /jffs/configs/profile.add
 	rm -rf /jffs/scripts/dnsmasq.postconf
 	rm -rf /tmp/sscdn.conf
 	rm -rf /tmp/custom.conf
 	rm -rf /tmp/wblist.conf
 	rm -rf /tmp/ss_host.conf
+	rm -rf /tmp/v2ray_tmp.json
 }
 
 kill_process(){
@@ -363,24 +245,23 @@ kill_process(){
 		echo_date 关闭haveged进程...
 		killall haveged >/dev/null 2>&1
 	fi
-	#echo 1 > /proc/sys/net/ipv4/tcp_fastopen
-	
 }
 
 # ================================= ss prestart ===========================
 ss_pre_start(){
-	if [ "$ss_lb_enable" == "1" ];then
+	lb_enable=`dbus get ss_lb_enable`
+	if [ "$lb_enable" == "1" ];then
 		echo_date ---------------------- 【科学上网】 启动前触发脚本 ----------------------
-		if [ `echo $ss_basic_server | grep -o "127.0.0.1"` ] && [ "$ss_basic_port" == "$ss_lb_port" ];then
-			echo_date 插件启动前触发:触发启动负载均衡功能！
+		if [ `dbus get ss_basic_server | grep -o "127.0.0.1"` ] && [ `dbus get ss_basic_port` == `dbus get ss_lb_port` ];then
+			echo_date ss启动前触发:触发启动负载均衡功能！
 			#start haproxy
 			sh /jffs/softcenter/scripts/ss_lb_config.sh
 		else
-			echo_date 插件启动前触发:未选择负载均衡节点，不触发负载均衡启动！
+			echo_date ss启动前触发:未选择负载均衡节点，不触发负载均衡启动！
 		fi
 	else
-		if [ `echo $ss_basic_server | grep -o "127.0.0.1"` ] && [ "$ss_basic_port" == "$ss_lb_port" ];then
-			echo_date 插件启动前触发【警告】：你选择了负载均衡节点，但是负载均衡开关未启用！！
+		if [ `dbus get ss_basic_server | grep -o "127.0.0.1"` ] && [ `dbus get ss_basic_port` == `dbus get ss_lb_port` ];then
+			echo_date ss启动前触发【警告】：你选择了负载均衡节点，但是负载均衡开关未启用！！
 		#else
 			#echo_date ss启动前触发：你选择了普通节点，不触发负载均衡启动！
 		fi
@@ -389,50 +270,44 @@ ss_pre_start(){
 # ================================= ss start ==============================
 
 resolv_server_ip(){
-	local tmp server_ip
 	if [ "$ss_basic_type" == "3" ] && [ "$ss_basic_v2ray_use_json" == "1" ];then
-		#v2ray json配置在后面单独处理
+		#echo_date "你使用的v2ray json配置，请自行将v2ray服务器ip地址添加到IP/CIDR白名单！"
 		return 1
 	else
-		# 判断服务器域名格式
-		tmp=$(__valid_ip "$ss_basic_server")
-		if [ $? == 0 ];then
-			# server is ip address format, not need to resolve.
-			echo_date "检测到你的$(__get_type_abbr_name)服务器已经是IP格式：$ss_basic_server,跳过解析... "
-			ss_basic_server_ip="$ss_basic_server"
-			dbus set ss_basic_server_ip=$ss_basic_server
-		else
-			echo_date "检测到你的$(__get_type_abbr_name)服务器：【$ss_basic_server】不是ip格式！"
-			echo_date "尝试解析$(__get_type_abbr_name)服务器的ip地址，使用DNS：$(__get_server_resolver):$(__get_server_resolver_port)"
-			echo_date "如果此处等待时间较久，建议在【节点域名解析DNS服务器】处更换DNS服务器..."
-			server_ip=$(__resolve_ip "$ss_basic_server")
-			case $? in
-			0)
-				echo_date "$(__get_type_abbr_name)服务器【$ss_basic_server】的ip地址解析成功：$server_ip"
-				echo "server=/$ss_basic_server/$(__get_server_resolver)#$(__get_server_resolver_port)" > /tmp/etc/dnsmasq.user/ss_server.conf
-				# server is domain format and success resolved.
-				# 记录解析结果到/tmp/ss_host.conf，方便插件触发重启设定工作
+		IFIP=`echo $ss_basic_server|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+		if [ -z "$IFIP" ];then
+			# 服务器地址强制由114解析，以免插件还未开始工作而导致解析失败
+			echo "server=/$ss_basic_server/$(get_server_resolver)#53" > /tmp/etc/dnsmasq.user/ss_server.conf
+			echo_date 尝试解析SS服务器的ip地址，DNS：$(get_server_resolver)
+			server_ip=`nslookup "$ss_basic_server" $(get_server_resolver) | sed '1,4d' | awk '{print $3}' | grep -v :|awk 'NR==1{print}'`
+			if [ "$?" == "0" ];then
+				server_ip=`echo $server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+			else
+				echo_date SS服务器域名解析失败！
+				echo_date 尝试用resolveip方式解析，DNS：系统
+				server_ip=`resolveip -4 -t 2 $ss_basic_server|awk 'NR==1{print}'`
+				if [ "$?" == "0" ];then
+			    	server_ip=`echo $server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+				fi
+			fi
+
+			if [ -n "$server_ip" ];then
+				echo_date SS服务器的ip地址解析成功：$server_ip
+				# 解析并记录一次ip，方便插件触发重启设定工作
 				echo "address=/$ss_basic_server/$server_ip" > /tmp/ss_host.conf
 				# 去掉此功能，以免ip发生变更导致问题，或者影响域名对应的其它二级域名
 				#ln -sf /tmp/ss_host.conf /tmp/etc/dnsmasq.user/ss_host.conf
 				ss_basic_server="$server_ip"
 				ss_basic_server_ip="$server_ip"
 				dbus set ss_basic_server_ip="$server_ip"
-				;;
-			1)
-				# server is domain format and failed to resolve.
-				echo_date "$(__get_type_abbr_name)服务器的ip地址解析失败，将由ss-redir自己解析... "
-				echo "server=/$ss_basic_server/$(__get_server_resolver)#$(__get_server_resolver_port)" > /tmp/etc/dnsmasq.user/ss_server.conf
-				unset ss_basic_server_ip
+			else
 				dbus remvoe ss_basic_server_ip
-				;;
-			2)
-				# server is not ip either domain!
-				echo_date "错误！！检测到你设置的服务器域名既不是ip地址，也不是域名格式！"
-				echo_date "请更正你的错误然后重试！！"
-				close_in_five
-				;;
-			esac
+				echo_date SS服务器的ip地址解析失败，将由ss-redir自己解析.
+			fi
+		else
+			ss_basic_server_ip="$ss_basic_server"
+			dbus set ss_basic_server_ip=$ss_basic_server
+			echo_date 检测到你的SS服务器已经是IP格式：$ss_basic_server,跳过解析... 
 		fi
 	fi
 }
@@ -458,7 +333,7 @@ ss_arg(){
 	fi
 }
 # create shadowsocks config file...
-creat_ss_json(){
+create_ss_json(){
 	if [ "$ss_basic_type" == "0" ];then
 		echo_date 创建SS配置文件到$CONFIG_FILE
 		cat > $CONFIG_FILE <<-EOF
@@ -515,6 +390,23 @@ creat_ss_json(){
 			mv /jffs/softcenter/ss/ss_tmp.json /jffs/softcenter/ss/ss.json
 		fi
 	fi
+}
+
+get_type_name() {
+	case "$1" in
+		0)
+			echo "shadowsocks-libev"
+		;;
+		1)
+			echo "shadowsocksR-libev"
+		;;
+		2)
+			echo "koolgame"
+		;;
+		3)
+			echo "v2ray"
+		;;
+	esac
 }
 
 get_dns_name() {
@@ -681,7 +573,7 @@ start_dns(){
 		if [ "$ss_basic_type" == "3" ];then
 			return 0
 		else
-			echo_date $(__get_type_full_name $ss_basic_type)下不支持v2ray dns，改用dns2socks！
+			echo_date $(get_type_name $ss_basic_type)下不支持v2ray dns，改用dns2socks！
 			dbus set ss_foreign_dns=3
 			start_sslocal
 			echo_date 开启dns2socks，用于dns解析...
@@ -767,7 +659,7 @@ create_dnsmasq_conf(){
 		echo_date 添加自定义dnsmasq设置到/tmp/custom.conf
 		echo "$ss_dnsmasq" | base64_decode | sort -u >> /tmp/custom.conf
 	fi
-	#*******************************************************************
+
 	# these sites need to go ss inside router
 	if [ "$ss_basic_mode" != "6" ];then
 		echo "#for router itself" >> /tmp/wblist.conf
@@ -788,8 +680,7 @@ create_dnsmasq_conf(){
 		#echo "server=/.apnic.net/127.0.0.1#7913" >> /tmp/wblist.conf
 		#echo "ipset=/.apnic.net/router" >> /tmp/wblist.conf
 	fi
-	#*******************************************************************
-
+	
 	# append white domain list, not through ss
 	wanwhitedomain=$(echo $ss_wan_white_domain | base64_decode)
 	if [ -n "$ss_wan_white_domain" ];then
@@ -941,9 +832,56 @@ start_haveged(){
 	haveged -w 1024 >/dev/null 2>&1
 }
 
+write_nat_start(){
+	echo_date "添加nat-start触发事件..."
+	dbus set __event__onnatstart_shadowsocks="/jffs/softcenter/ss/ssconfig.sh"
+}
+
+remove_nat_start(){
+	[ -n "`dbus get __event__onnatstart_shadowsocks`" ] && {
+		echo_date "删除nat-start触发..."
+		dbus remove __event__onnatstart_shadowsocks
+	}
+}
+
 auto_start(){
-	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
-	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
+	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
+	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
+	
+	# nat_auto_start
+	#mkdir -p /jffs/scripts
+	# creating iptables rules to nat-start
+	#if [ ! -f /jffs/scripts/nat-start ]; then
+	#cat > /jffs/scripts/nat-start <<-EOF
+	#	#!/bin/sh
+	#	dbus fire onnatstart
+	#	
+	#	EOF
+	#fi
+	
+	#writenat=$(cat /jffs/scripts/nat-start | grep "ssconfig")
+	#if [ -z "$writenat" ];then
+	#	echo_date 添加nat-start触发事件...用于ss的nat规则重启后或网络恢复后的加载...
+	#	sed -i '2a sh /jffs/softcenter/ss/ssconfig.sh' /jffs/scripts/nat-start
+	#	chmod +x /jffs/scripts/nat-start
+	#fi
+
+	# wan_auto_start
+	# Add service to auto start
+	#if [ ! -f /jffs/scripts/wan-start ]; then
+	#	cat > /jffs/scripts/wan-start <<-EOF
+	#		#!/bin/sh
+	#		dbus fire onwanstart
+	#		
+	#		EOF
+	#fi
+	
+	#startss=$(cat /jffs/scripts/wan-start | grep "/jffs/softcenter/scripts/ss_config.sh")
+	#if [ -z "$startss" ];then
+	#	echo_date 添加wan-start触发事件...用于ss的各种程序的开机启动...
+	#	sed -i '2a sh /jffs/softcenter/scripts/ss_config.sh' /jffs/scripts/wan-start
+	#fi
+	#chmod +x /jffs/scripts/wan-start
 }
 
 start_kcp(){
@@ -1151,48 +1089,18 @@ start_ss_redir(){
 				# tcp udp go ss
 				echo_date $BIN的 tcp 走$BIN.
 				echo_date $BIN的 udp 走$BIN.
-				fire_redir "$BIN -c $CONFIG_FILE $ARG_OBFS -u"
+				$BIN -c $CONFIG_FILE $ARG_OBFS -u -f /var/run/shadowsocks.pid >/dev/null 2>&1
 			fi
 		else
 			# tcp only go ss
 			echo_date $BIN的 tcp 走$BIN.
 			echo_date $BIN的 udp 未开启.
-			fire_redir "$BIN -c $CONFIG_FILE $ARG_OBFS"
+			$BIN -c $CONFIG_FILE $ARG_OBFS -f /var/run/shadowsocks.pid >/dev/null 2>&1		
 		fi
 	fi
 	echo_date $BIN 启动完毕！.
 	
 	start_speeder
-}
-
-fire_redir(){
-	[ "$ss_basic_type" == "0" ] && [ "$ss_basic_mcore" == "1" ] && local ARG_1="--reuse-port" || local ARG_1=""
-	if [ "$ss_basic_type" == "0" ] && [ "$ss_basic_tfo" == "1" ];then
-		local ARG_2="--fast-open"
-		echo_date $BIN开启tcp fast open支持.
-		#echo 3 > /proc/sys/net/ipv4/tcp_fastopen
-	else
-		local ARG_2=""
-	fi
-
-	if [ "$ss_basic_type" == "0" ] && [ "$ss_basic_tnd" == "1" ];then
-		echo_date $BIN开启TCP_NODELAY支持.
-		local ARG_3="--no-delay"
-	else
-		local ARG_3=""
-	fi
-	
-	if [ "$ss_basic_mcore" == "1" ];then
-		echo_date $BIN开启$THREAD线程支持.
-		local i=1
-		while [ $i -le $THREAD ]
-		do
-			cmd $1 $ARG_1 $ARG_2 $ARG_3 -f /var/run/ss_$i.pid
-			let i++
-		done
-	else
-		cmd $1 -f /var/run/ss.pid
-	fi
 }
 
 start_koolgame(){
@@ -1258,8 +1166,7 @@ get_path(){
 	fi
 }
 
-creat_v2ray_json(){
-	local tmp v2ray_server_ip
+create_v2ray_json(){
 	rm -rf "$V2RAY_CONFIG_FILE_TMP"
 	rm -rf "$V2RAY_CONFIG_FILE"
 	if [ "$ss_basic_v2ray_use_json" == "0" ];then
@@ -1414,17 +1321,18 @@ creat_v2ray_json(){
 					"settings": {
 						"vnext": [
 							{
-								"address": "$ss_basic_server_orig",
+								"address": "`dbus get ss_basic_server`",
 								"port": $ss_basic_port,
 								"users": [
 									{
 										"id": "$ss_basic_v2ray_uuid",
-										"alterId": "$ss_basic_v2ray_alterid",
+										"alterId": $ss_basic_v2ray_alterid,
 										"security": "$ss_basic_v2ray_security"
 									}
 								]
 							}
-						]
+						],
+						"servers": null
 					},
 					"streamSettings": {
 						"network": "$ss_basic_v2ray_network",
@@ -1436,7 +1344,8 @@ creat_v2ray_json(){
 						"httpSettings": $h2
 					},
 					"mux": {
-						"enabled": $(get_function_switch $ss_basic_v2ray_mux_enable)
+						"enabled": $(get_function_switch $ss_basic_v2ray_mux_enable),
+						"concurrency": $ss_basic_v2ray_mux_concurrency
 					}
 				}
 			}
@@ -1448,7 +1357,7 @@ creat_v2ray_json(){
 		echo_date 使用自定义的v2ray json配置文件...
 		echo "$ss_basic_v2ray_json" | base64_decode > "$V2RAY_CONFIG_FILE_TMP"
 
-		OUTBOUND=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .outbound`
+		OUTBOUND=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .outbounds`
 		#JSON_INFO=`cat "$V2RAY_CONFIG_FILE_TMP" | jq 'del (.inbound) | del (.inboundDetour) | del (.log)'`
 		#INBOUND_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
 		#INBOUND_DETOUR_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
@@ -1483,21 +1392,25 @@ creat_v2ray_json(){
 							}
 						]
 						}"
+		#local TEMPLATE=`cat /jffs/softcenter/ss/rules/v2ray_template.json`
 		echo_date 解析V2Ray配置文件...
-		echo $TEMPLATE | jq --argjson args "$OUTBOUND" '. + {outbound: $args}' > "$V2RAY_CONFIG_FILE"
+		echo $TEMPLATE | jq --argjson args "$OUTBOUND" '. + {outbounds: $args}' > "$V2RAY_CONFIG_FILE"
+		#echo $TEMPLATE | jq --argjson args "$JSON_INFO" '. + $args' > "$V2RAY_CONFIG_FILE"
+		
 		echo_date V2Ray配置文件写入成功到"$V2RAY_CONFIG_FILE"
+		#close_in_five
 		
 		# 检测用户json的服务器ip地址
-		v2ray_protocal=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.protocol`
-		case $v2ray_protocal in
+		v2ray_protocol=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds[0].protocol`
+		case $v2ray_protocol in
 		vmess)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.vnext[0].address`
+			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds[0].settings.vnext[0].address`
 			;;
 		socks)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
+			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds[0].settings.servers[0].address`
 			;;
 		shadowsocks)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
+			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds[0].settings.servers[0].address`
 			;;
 		*)
 			v2ray_server=""
@@ -1505,42 +1418,41 @@ creat_v2ray_json(){
 		esac
 
 		if [ -n "$v2ray_server" -a "$v2ray_server" != "null" ];then
-			# 服务器地址强制由用户选择的DNS解析，以免插件还未开始工作而导致解析失败
-			echo "server=/$v2ray_server/$(__get_server_resolver)#$(__get_server_resolver_port)" > /tmp/etc/dnsmasq.user/ss_server.conf
-			# 判断服务器域名格式
-			tmp=$(__valid_ip "$v2ray_server")
-			if [ $? == 0 ];then
-				echo_date "检测到你的json配置的v2ray服务器是：$v2ray_server"
+			IFIP_VS=`echo $v2ray_server|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+			if [ -n "$IFIP_VS" ];then
 				ss_basic_server_ip="$v2ray_server"
+				echo_date "检测到你的json配置的v2ray服务器是：$v2ray_server"
 			else
-				echo_date "检测到你的json配置的v2ray服务器：【$v2ray_server】不是ip格式！"
-				echo_date "尝试解析v2ray服务器的ip地址，使用DNS：$(__get_server_resolver):$(__get_server_resolver_port)"
-				echo_date "如果此处等待时间较久，建议在【节点域名解析DNS服务器】处更换DNS服务器..."
-				v2ray_server_ip=$(__resolve_ip "$v2ray_server")
-				case $? in
-				0)
-					# server is domain format and success resolved.
+				echo_date "检测到你的json配置的v2ray服务器：$v2ray_server不是ip格式！"
+				echo_date "为了确保v2ray的正常工作，建议配置ip格式的v2ray服务器地址！"
+				echo_date "尝试解析v2ray服务器的ip地址，DNS：$(get_server_resolver)"
+				# 服务器地址强制由114解析，以免插件还未开始工作而导致解析失败
+				echo "server=/$v2ray_server/$(get_server_resolver)#53" > /tmp/etc/dnsmasq.user/ss_server.conf
+				v2ray_server_ip=`nslookup "$v2ray_server" $(get_server_resolver) | sed '1,4d' | awk '{print $3}' | grep -v :|awk 'NR==1{print}'`
+				if [ "$?" == "0" ]; then
+					v2ray_server_ip=`echo $v2ray_server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+				else
+					echo_date v2ray服务器域名解析失败！
+					echo_date 尝试用resolveip方式解析，DNS：系统
+					v2ray_server_ip=`resolveip -4 -t 2 $ss_basic_server|awk 'NR==1{print}'`
+					if [ "$?" == "0" ];then
+						v2ray_server_ip=`echo $v2ray_server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+					fi
+				fi
+
+				if [ -n "$v2ray_server_ip" ];then
 					echo_date "v2ray服务器的ip地址解析成功：$v2ray_server_ip"
 					# 解析并记录一次ip，方便插件触发重启设定工作
 					echo "address=/$v2ray_server/$v2ray_server_ip" > /tmp/ss_host.conf
 					# 去掉此功能，以免ip发生变更导致问题，或者影响域名对应的其它二级域名
 					#ln -sf /tmp/ss_host.conf /tmp/etc/dnsmasq.user/ss_host.conf
 					ss_basic_server_ip="$v2ray_server_ip"
-					;;
-				1)
-					# server is domain format and failed to resolve.
-					unset ss_basic_server_ip
+				else
 					echo_date "v2ray服务器的ip地址解析失败!插件将继续运行，域名解析将由v2ray自己进行！"
 					echo_date "请自行将v2ray服务器的ip地址填入IP/CIDR白名单中!"
 					echo_date "为了确保v2ray的正常工作，建议配置ip格式的v2ray服务器地址！"
-					;;
-				2)
-					# server is not ip either domain!
-					echo_date "错误！！检测到json配置内的v2ray服务器既不是ip地址，也不是域名格式！"
-					echo_date "请更正你的错误然后重试！！"
-					close_in_five
-					;;
-				esac
+					#close_in_five
+				fi
 			fi
 		else
 			echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -1573,9 +1485,9 @@ creat_v2ray_json(){
 		echo_date $result
 		echo_date V2Ray配置文件通过测试!!!
 	else
-		echo_date V2Ray配置文件没有通过测试，请检查设置!!!
 		#rm -rf "$V2RAY_CONFIG_FILE_TMP"
 		#rm -rf "$V2RAY_CONFIG_FILE"
+		echo_date V2Ray配置文件没有通过测试，请检查设置!!!
 		close_in_five
 	fi
 }
@@ -1583,8 +1495,8 @@ creat_v2ray_json(){
 start_v2ray(){
 	cd /jffs/softcenter/bin
 	#export GOGC=30
-	v2ray --config=/jffs/softcenter/ss/v2ray.json >/dev/null 2>&1 &
-	local V2PID
+	v2ray -config=/jffs/softcenter/ss/v2ray.json >/dev/null 2>&1 &
+	#local V2PID
 	local i=10
 	until [ -n "$V2PID" ]
 	do
@@ -1610,10 +1522,10 @@ write_cron_job(){
 	sed -i '/ssnodeupdate/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
 	if [ "$ss_basic_node_update" = "1" ];then
 		if [ "$ss_basic_node_update_day" = "7" ];then
-			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * * /jffs/softcenter/scripts/ss_online_update.sh 3"
+			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * * /bin/sh /jffs/softcenter/scripts/ss_online_update.sh 3"
 			echo_date "设置订阅服务器自动更新订阅服务器在每天 $ss_basic_node_update_hr 点。"
 		else
-			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * $ss_basic_node_update_day /jffs/softcenter/scripts/ss_online_update.sh 3"
+			cru a ssnodeupdate "0 $ss_basic_node_update_hr * * $ss_basic_node_update_day /bin/sh /jffs/softcenter/scripts/ss_online_update.sh 3"
 			echo_date "设置订阅服务器自动更新订阅服务器在星期 $ss_basic_node_update_day 的 $ss_basic_node_update_hr 点。"
 		fi
 	fi
@@ -1687,7 +1599,6 @@ flush_nat(){
 	iptables -t mangle -F SHADOWSOCKS >/dev/null 2>&1 && iptables -t mangle -X SHADOWSOCKS >/dev/null 2>&1
 	iptables -t mangle -F SHADOWSOCKS_GAM > /dev/null 2>&1 && iptables -t mangle -X SHADOWSOCKS_GAM > /dev/null 2>&1
 	iptables -t nat -D OUTPUT -p tcp -m set --match-set router dst -j REDIRECT --to-ports 3333 >/dev/null 2>&1
-	#iptables -t nat -D OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 3333 >/dev/null 2>&1
 	iptables -t nat -F OUTPUT > /dev/null 2>&1
 	iptables -t nat -X SHADOWSOCKS_EXT > /dev/null 2>&1
 	#iptables -t nat -D PREROUTING -p udp -s $(get_lan_cidr) --dport 53 -j DNAT --to $lan_ipaddr >/dev/null 2>&1
@@ -1716,8 +1627,8 @@ flush_nat(){
 	ip route del local 0.0.0.0/0 dev lo table 310 >/dev/null 2>&1
 }
 
-# creat ipset rules
-creat_ipset(){
+# create ipset rules
+create_ipset(){
 	echo_date 创建ipset名单
 	ipset -! create white_list nethash && ipset flush white_list
 	ipset -! create black_list nethash && ipset flush black_list
@@ -1738,7 +1649,7 @@ add_white_black_ip(){
 	fi
 	
 	if [ -n "$ss_wan_black_ip" ];then
-		ss_wan_black_ip=`echo $ss_wan_black_ip|base64_decode|sed '/\#/d'`
+		ss_wan_black_ip=`dbus get ss_wan_black_ip|base64_decode|sed '/\#/d'`
 		echo_date 应用IP/CIDR黑名单
 		for ip in $ss_wan_black_ip
 		do
@@ -1837,11 +1748,11 @@ lan_acess_control(){
 	if [ -n "$acl_nu" ]; then
 		for acl in $acl_nu
 		do
-			ipaddr=$(eval echo \$ss_acl_ip_$acl)
-			ipaddr_hex=$(echo $ipaddr | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("%02x\n", $4)}')
-			ports=$(eval echo \$ss_acl_port_$acl)
-			proxy_mode=$(eval echo \$ss_acl_mode_$acl)
-			proxy_name=$(eval echo \$ss_acl_name_$acl)
+			ipaddr=`dbus get ss_acl_ip_$acl`
+			ipaddr_hex=`dbus get ss_acl_ip_$acl | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("%02x\n", $4)}'`
+			ports=`dbus get ss_acl_port_$acl`
+			proxy_mode=`dbus get ss_acl_mode_$acl`
+			proxy_name=`dbus get ss_acl_name_$acl`
 			if [ "$ports" == "all" ];then
 				ports=""
 				echo_date 加载ACL规则：【$ipaddr】【全部端口】模式为：$(get_mode_name $proxy_mode)
@@ -1945,7 +1856,6 @@ apply_nat_rules(){
 	#-----------------------FOR ROUTER---------------------
 	# router itself
 	[ "$ss_basic_mode" != "6" ] && iptables -t nat -A OUTPUT -p tcp -m set --match-set router dst -j REDIRECT --to-ports 3333
-	#[ "$ss_basic_mode" != "6" ] && iptables -t nat -A OUTPUT -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 3333
 	iptables -t nat -A OUTPUT -p tcp -m mark --mark "$ip_prefix_hex" -j SHADOWSOCKS_EXT
 	
 	# 把最后剩余流量重定向到相应模式的nat表中对应的主模式的链
@@ -2018,7 +1928,8 @@ set_ulimit(){
 
 remove_ss_reboot_job(){
 	if [ -n "`cru l|grep ss_reboot`" ]; then
-		echo_date "【科学上网】：删除插件自动重启定时任务..."
+		echo_date 删除插件自动重启定时任务...
+		#cru d ss_reboot >/dev/null 2>&1
 		sed -i '/ss_reboot/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
 	fi
 }
@@ -2027,51 +1938,51 @@ set_ss_reboot_job(){
 	if [[ "${ss_reboot_check}" == "0" ]]; then
 		remove_ss_reboot_job
 	elif [[	"${ss_reboot_check}" ==	"1"	]];	then
-		echo_date "【科学上网】：设置每天${ss_basic_time_hour}时${ss_basic_time_min}分重启插件..."
-		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}" * *	* /bin/sh/jffs/softcenter/ss/ssconfig.sh restart"
+		echo_date 设置每天${ss_basic_time_hour}时${ss_basic_time_min}分重启插件...
+		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	* *	* /jffs/softcenter/ss/ssconfig.sh	restart"
 	elif [[	"${ss_reboot_check}" ==	"2"	]];	then
-		echo_date "【科学上网】：设置每周${ss_basic_week}的${ss_basic_time_hour}时${ss_basic_time_min}分重启插件..."
-		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}" * *	"${ss_basic_week}" /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
+		echo_date 设置每周${ss_basic_week}的${ss_basic_time_hour}时${ss_basic_time_min}分重启插件...
+		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	* *	"${ss_basic_week}" /jffs/softcenter/ss/ssconfig.sh restart"
 	elif [[	"${ss_reboot_check}" ==	"3"	]];	then
-		echo_date "【科学上网】：设置每月${ss_basic_day}日${ss_basic_time_hour}时${ss_basic_time_min}分重启插件..."
-		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour} ${ss_basic_day}" * * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
+		echo_date 设置每月${ss_basic_day}日${ss_basic_time_hour}时${ss_basic_time_min}分重启插件...
+		cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour} ${ss_basic_day}"	* *	/jffs/softcenter/ss/ssconfig.sh restart"
 	elif [[	"${ss_reboot_check}" ==	"4"	]];	then
 		if [[ "${ss_basic_inter_pre}" == "1" ]]; then
-			echo_date "【科学上网】：设置每隔${ss_basic_inter_min}分钟重启插件..."
-			cru	a ss_reboot	"*/"${ss_basic_inter_min}" * * * * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
+			echo_date 设置每隔${ss_basic_inter_min}分钟重启插件...
+			cru	a ss_reboot	"*/"${ss_basic_inter_min}" * * * * /jffs/softcenter/ss/ssconfig.sh restart"
 		elif [[	"${ss_basic_inter_pre}"	== "2" ]]; then
-			echo_date "【科学上网】：设置每隔${ss_basic_inter_hour}小时重启插件..."
-			cru	a ss_reboot	"0 */"${ss_basic_inter_hour}" *	* * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
+			echo_date 设置每隔${ss_basic_inter_hour}小时重启插件...
+			cru	a ss_reboot	"0 */"${ss_basic_inter_hour}" *	* *	/jffs/softcenter/ss/ssconfig.sh restart"
 		elif [[	"${ss_basic_inter_pre}"	== "3" ]]; then
-			echo_date "【科学上网】：设置每隔${ss_basic_inter_day}天${ss_basic_inter_hour}小时${ss_basic_time_min}分钟重启插件..."
-			cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	*/"${ss_basic_inter_day} " * * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
+			echo_date 设置每隔${ss_basic_inter_day}天${ss_basic_inter_hour}小时${ss_basic_time_min}分钟重启插件...
+			cru	a ss_reboot	${ss_basic_time_min} ${ss_basic_time_hour}"	*/"${ss_basic_inter_day} " * * /jffs/softcenter/ss/ssconfig.sh restart"
 		fi
 	elif [[	"${ss_reboot_check}" ==	"5"	]];	then
-		check_custom_time=`echo ss_basic_custom | base64_decode`
-		echo_date "【科学上网】：设置每天${check_custom_time}时的${ss_basic_time_min}分重启插件..."
-		cru	a ss_reboot	${ss_basic_time_min} ${check_custom_time}" * * * /bin/sh /jffs/softcenter/ss/ssconfig.sh restart"
+		check_custom_time=`dbus	get	ss_basic_custom	| base64_decode`
+		echo_date 设置每天${check_custom_time}时的${ss_basic_time_min}分重启插件...
+		cru	a ss_reboot	${ss_basic_time_min} ${check_custom_time}" * * * /jffs/softcenter/ss/ssconfig.sh restart"
+	else
+		remove_ss_reboot_job
 	fi
 }
 
 remove_ss_trigger_job(){
 	if [ -n "`cru l|grep ss_tri_check`" ]; then
-		echo_date "删除插件触发重启定时任务..."
+		echo_date 删除插件触发重启定时任务...
+		#cru d ss_tri_check >/dev/null 2>&1
 		sed -i '/ss_tri_check/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
-	else
-		echo_date "插件触发重启定时任务已经删除..."
 	fi
 }
 
 set_ss_trigger_job(){
-	if [ "$ss_basic_tri_reboot_time" == "0" ];then
+	if [ "$ss_basic_tri_reboot_time" == "0" ] || [ -z "$ss_basic_tri_reboot_time" ];then
 		remove_ss_trigger_job
 	else
 		if [ "$ss_basic_tri_reboot_policy" == "1" ];then
-			echo_date "设置每隔$ss_basic_tri_reboot_time分钟检查服务器IP地址，如果IP发生变化，则重启科学上网插件..."
+			echo_date 设置每隔$ss_basic_tri_reboot_time分钟检查服务器IP地址，如果IP发生变化，则重启科学上网插件...
 		else
-			echo_date "设置每隔$ss_basic_tri_reboot_time分钟检查服务器IP地址，如果IP发生变化，则重启dnsmasq..."
+			echo_date 设置每隔$ss_basic_tri_reboot_time分钟检查服务器IP地址，如果IP发生变化，则重启dnsmasq...
 		fi
-		echo_date "科学上网插件触发重启功能的日志将显示再系统日志内。"
 		cru d ss_tri_check  >/dev/null 2>&1
 		cru a ss_tri_check "*/$ss_basic_tri_reboot_time * * * * /jffs/softcenter/scripts/ss_reboot_job.sh check_ip"
 	fi
@@ -2091,7 +2002,7 @@ load_nat(){
 		nat_ready=$(iptables -t nat -L PREROUTING -v -n --line-numbers|grep -v PREROUTING|grep -v destination)
 	done
 	echo_date "加载nat规则!"
-	#creat_ipset
+	#create_ipset
 	add_white_black_ip
 	apply_nat_rules
 	chromecast
@@ -2113,7 +2024,6 @@ ss_post_start(){
 
 ss_pre_stop(){
 	# 在SS插件关闭前触发脚本
-	local i
 	mkdir -p /jffs/softcenter/ss/postscripts && cd /jffs/softcenter/ss/postscripts
 	for i in $(find ./ -name 'P*' | sort -r) ;
 	do
@@ -2127,7 +2037,6 @@ ss_pre_stop(){
 }
 
 detect(){
-	MODEL=`nvram get productid`
 	# 检测jffs2脚本是否开启，如果没有开启，将会影响插件的自启和DNS部分（dnsmasq.postconf）
 	if [ "`nvram get jffs2_scripts`" != "1" ];then
 		echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -2136,22 +2045,6 @@ detect(){
 		echo_date "+     请前往【系统管理】- 【系统设置】去开启，并重启路由器后重试！！      +"
 		echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 		close_in_five
-	fi
-	#检测v2ray模式下是否启用虚拟内存
-	if [ "$ss_basic_type" == "3" -a -z "$WAN_ACTION" ];then
-		if [ "$MODEL" != "BLUECAVE" ];then
-			SWAPSTATUS=`free|grep Swap|awk '{print $2}'`
-			if [ "$SWAPSTATUS" != "0" ];then
-				echo_date "你选择了v2ray节点，当前系统已经启用虚拟内存！！符合启动条件！"
-			else
-				echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-				echo_date "+          你选择了v2ray节点，而当前系统未启用虚拟内存！               +"
-				echo_date "+        v2ray程序对路由器开销极大，请挂载虚拟内存后再开启！            +"
-				echo_date "+       如果使用 ws + tls + web 方案，建议1G虚拟内存，以保证稳定！     +"
-				echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-				close_in_five
-			fi
-		fi
 	fi
 	
 	# 检测是否在lan设置中是否自定义过dns,如果有给干掉
@@ -2166,21 +2059,19 @@ detect(){
 }
 
 mount_dnsmasq(){
-	#killall dnsmasq >/dev/null 2>&1
-	#mount --bind /jffs/softcenter/bin/dnsmasq /usr/sbin/dnsmasq
+	killall dnsmasq >/dev/null 2>&1
+	mount --bind /jffs/softcenter/bin/dnsmasq /usr/sbin/dnsmasq
 	#service restart_dnsmasq >/dev/null 2>&
-	echo_date "ok"
 }
 
 umount_dnsmasq(){
-	#killall dnsmasq >/dev/null 2>&1
-	#umount /usr/sbin/dnsmasq
-	echo_date "ok"
+	killall dnsmasq >/dev/null 2>&1
+	umount /usr/sbin/dnsmasq
 }
 
 
 mount_dnsmasq_now(){
-	local MOUNTED=`mount|grep -o dnsmasq`
+	MOUNTED=`mount|grep -o dnsmasq`
 	case $ss_basic_dnsmasq_fastlookup in
 	0)
 		if [ -n "$MOUNTED" ];then
@@ -2215,7 +2106,7 @@ mount_dnsmasq_now(){
 }
 
 umount_dnsmasq_now(){
-	local MOUNTED=`mount|grep -o dnsmasq`
+	MOUNTED=`mount|grep -o dnsmasq`
 	case $ss_basic_dnsmasq_fastlookup in
 	0|1|2)
 		if [ -n "$MOUNTED" ];then
@@ -2235,8 +2126,6 @@ umount_dnsmasq_now(){
 }
 
 disable_ss(){
-	get_config
-	ss_pre_stop
 	echo_date ======================= 梅林固件 - 【科学上网】 ========================
 	echo_date
 	echo_date ------------------------- 关闭【科学上网】 -----------------------------
@@ -2258,12 +2147,11 @@ disable_ss(){
 apply_ss(){
 	# router is on boot
 	WAN_ACTION=`ps|grep /jffs/scripts/wan-start|grep -v grep`
-	get_config
-	ss_pre_stop
 	# now stop first
 	echo_date ======================= 梅林固件 - 【科学上网】 ========================
 	echo_date
 	echo_date ------------------------- 启动【科学上网】 -----------------------------
+	ss_pre_stop
 	nvram set ss_mode=0
 	dbus set dns2socks=0
 	nvram commit
@@ -2271,6 +2159,7 @@ apply_ss(){
 	remove_ss_trigger_job
 	remove_ss_reboot_job
 	restore_conf
+	remove_nat_start
 	# restart dnsmasq when ss server is not ip or on router boot
 	restart_dnsmasq
 	flush_nat
@@ -2281,15 +2170,15 @@ apply_ss(){
 	# start
 	#echo_date ------------------------- 启动 【科学上网】 ----------------------------
 	detect
-	set_ulimit
 	resolv_server_ip
 	ss_arg
 	load_module
-	creat_ipset
+	create_ipset
 	create_dnsmasq_conf
+	write_nat_start
 	# do not re generate json on router start, use old one
-	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" != "3" ] && creat_ss_json
-	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" = "3" ] && creat_v2ray_json
+	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" != "3" ] && create_ss_json
+	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" = "3" ] && create_v2ray_json
 	[ "$ss_basic_type" == "0" ] || [ "$ss_basic_type" == "1" ] && start_ss_redir
 	[ "$ss_basic_type" == "2" ] && start_koolgame
 	[ "$ss_basic_type" == "3" ] && start_v2ray
@@ -2304,7 +2193,6 @@ apply_ss(){
 	write_cron_job
 	set_ss_reboot_job
 	set_ss_trigger_job
-	write_numbers
 	# post-start
 	ss_post_start
 	echo_date ------------------------ 【科学上网】 启动完毕 ------------------------
@@ -2348,29 +2236,38 @@ start)
 	set_lock
 	if [ "$ss_basic_enable" == "1" ];then
 		logger "[软件中心]: 启动科学上网插件！"
+		set_ulimit >> "$LOG_FILE"
 		apply_ss >> "$LOG_FILE"
+		write_numbers >> "$LOG_FILE"
 	else
 		logger "[软件中心]: 科学上网插件未开启，不启动！"
 	fi
+	#get_status >> /tmp/ss_start.txt
 	unset_lock
 	;;
 stop)
 	set_lock
+	ss_pre_stop
+	remove_nat_start
 	disable_ss
 	echo_date
-	echo_date 你已经成功关闭科学上网服务~
+	echo_date 你已经成功关闭shadowsocks服务~
 	echo_date See you again!
 	echo_date
 	echo_date ======================= 梅林固件 - 【科学上网】 ========================
+	#get_status >> /tmp/ss_start.txt
 	unset_lock
 	;;
 restart)
 	set_lock
+	set_ulimit
 	apply_ss
+	write_numbers
 	echo_date
 	echo_date "Across the Great Wall we can reach every corner in the world!"
 	echo_date
 	echo_date ======================= 梅林固件 - 【科学上网】 ========================
+	#get_status >> /tmp/ss_start.txt
 	unset_lock
 	;;
 flush_nat)
@@ -2381,11 +2278,11 @@ flush_nat)
 *)
 	set_lock
 	if [ "$ss_basic_enable" == "1" ];then
-		logger "[软件中心]: 启动科学上网插件！"
-		apply_ss >> "$LOG_FILE"
-	else
-		logger "[软件中心]: 科学上网插件未开启，不启动！"
+		set_ulimit
+		apply_ss
+		write_numbers
 	fi
+	#get_status >> /tmp/ss_start.txt
 	unset_lock
 	;;
 esac
