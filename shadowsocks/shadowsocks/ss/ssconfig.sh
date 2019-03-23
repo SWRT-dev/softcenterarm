@@ -20,6 +20,7 @@ IFIP_DNS2=`echo $ISP_DNS2|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
 lan_ipaddr=$(nvram get lan_ipaddr)
 ip_prefix_hex=`nvram get lan_ipaddr | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("00/0xffffff00\n")}'`
 ARG_OBFS=""
+NAT_START=/jffs/scripts/nat-start
 
 #-----------------------------------------------
 get_config(){
@@ -933,7 +934,10 @@ create_dnsmasq_conf(){
 	fi
 
 	#echo_date 创建dnsmasq.postconf软连接到/jffs/scripts/文件夹.
-	[ ! -L "/jffs/scripts/dnsmasq.postconf" ] && ln -sf /jffs/softcenter/ss/rules/dnsmasq.postconf /jffs/scripts/dnsmasq.postconf
+	[ ! -L "/jffs/scripts/dnsmasq.postconf" ] && {
+		cp -rf /jffs/softcenter/ss/rules/dnsmasq.postconf /tmp/dnsmasq.postconf
+		ln -sf /tmp/dnsmasq.postconf /jffs/scripts/dnsmasq.postconf
+	}
 }
 
 start_haveged(){
@@ -942,8 +946,31 @@ start_haveged(){
 }
 
 auto_start(){
-	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
-	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
+	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
+	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
+}
+
+write_nat_start(){
+	echo_date 添加nat-start触发事件...
+	if [ ! -f $NAT_START ]; then
+		cat > $NAT_START <<-EOF
+		#!/bin/sh
+		EOF
+	fi
+	
+	fire_rule=$(cat $NAT_START | grep ssconfig)
+	if [ -z "$fire_rule" ];then
+		cat >> $NAT_START <<-EOF
+		/bin/sh /jffs/softcenter/ss/ssconfig.sh
+		EOF
+	fi
+}
+
+remove_nat_start(){
+	fire_rule=$(cat $NAT_START | grep ssconfig)
+	if [ ! -z "$fire_rule" ];then
+		sed -i '/ssconfig/d' $NAT_START >/dev/null 2>&1
+	fi
 }
 
 start_kcp(){
@@ -2271,6 +2298,7 @@ apply_ss(){
 	remove_ss_trigger_job
 	remove_ss_reboot_job
 	restore_conf
+	remove_nat_start
 	# restart dnsmasq when ss server is not ip or on router boot
 	restart_dnsmasq
 	flush_nat
@@ -2286,6 +2314,7 @@ apply_ss(){
 	ss_arg
 	load_module
 	creat_ipset
+	write_nat_start
 	create_dnsmasq_conf
 	# do not re generate json on router start, use old one
 	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" != "3" ] && creat_ss_json
@@ -2356,6 +2385,7 @@ start)
 	;;
 stop)
 	set_lock
+	remove_nat_start
 	disable_ss
 	echo_date
 	echo_date 你已经成功关闭科学上网服务~
