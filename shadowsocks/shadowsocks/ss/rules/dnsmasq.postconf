@@ -25,7 +25,7 @@ perpare(){
 		else
 			if [ -n "$IFIP_DNS1" ];then
 				# 运营商DNS1:ISP_DNS1是ip格式
-				FO=`awk -F'[./]' -v ip=$IFIP_DNS1 ' {for (i=1;i<=int($NF/8);i++){a=a$i"."} if (index(ip, a)==1){split( ip, A, ".");b=int($NF/8);if (A[b+1]<($(NF+b-4)+2^(8-$NF%8))&&A[b+1]>=$(NF+b-4)) print ip,"belongs to",$0} a=""}' /koolshare/ss/rules/chnroute.txt`
+				FO=`awk -F'[./]' -v ip=$IFIP_DNS1 ' {for (i=1;i<=int($NF/8);i++){a=a$i"."} if (index(ip, a)==1){split( ip, A, ".");b=int($NF/8);if (A[b+1]<($(NF+b-4)+2^(8-$NF%8))&&A[b+1]>=$(NF+b-4)) print ip,"belongs to",$0} a=""}' /jffs/softcenter/ss/rules/chnroute.txt`
 				if [ -n "$FO" ];then
 					# 运营商DNS1:ISP_DNS1是国内IP
 					CDN1="$IFIP_DNS1"
@@ -44,7 +44,7 @@ perpare(){
 		else
 			if [ -n "$IFIP_DNS2" ];then
 				# 运营商DNS1:ISP_DNS1是ip格式
-				FO=`awk -F'[./]' -v ip=$IFIP_DNS2 ' {for (i=1;i<=int($NF/8);i++){a=a$i"."} if (index(ip, a)==1){split( ip, A, ".");b=int($NF/8);if (A[b+1]<($(NF+b-4)+2^(8-$NF%8))&&A[b+1]>=$(NF+b-4)) print ip,"belongs to",$0} a=""}' /koolshare/ss/rules/chnroute.txt`
+				FO=`awk -F'[./]' -v ip=$IFIP_DNS2 ' {for (i=1;i<=int($NF/8);i++){a=a$i"."} if (index(ip, a)==1){split( ip, A, ".");b=int($NF/8);if (A[b+1]<($(NF+b-4)+2^(8-$NF%8))&&A[b+1]>=$(NF+b-4)) print ip,"belongs to",$0} a=""}' /jffs/softcenter/ss/rules/chnroute.txt`
 				if [ -n "$FO" ];then
 					# 运营商DNS1:ISP_DNS1是国内IP
 					CDN2="$IFIP_DNS2"
