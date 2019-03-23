@@ -28,7 +28,7 @@ if [ -n "`ls /jffs/softcenter/ss/postscripts/P*.sh 2>/dev/null`" ];then
 fi
 
 echo_date 清理旧文件
-rm -rf /jffs/softcenter/ss/*
+rm -rf /jffs/softcenter/ss
 rm -rf /jffs/softcenter/scripts/ss_*
 rm -rf /jffs/softcenter/webs/Main_Ss*
 rm -rf /jffs/softcenter/bin/ss-redir
@@ -58,6 +58,10 @@ rm -rf /jffs/softcenter/bin/jitterentropy-rngd
 rm -rf /jffs/softcenter/bin/haveged
 rm -rf /jffs/softcenter/bin/https_dns_proxy
 rm -rf /jffs/softcenter/bin/dnsmassq
+rm -rf /jffs/softcenter/bin/base64
+rm -rf /jffs/softcenter/bin/shuf
+rm -rf /jffs/softcenter/bin/netstat
+rm -rf /jffs/softcenter/bin/base64_decode
 rm -rf /jffs/softcenter/res/layer
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/icon-shadowsocks.png
@@ -69,7 +73,7 @@ rm -rf /jffs/softcenter/res/game.png
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/gameV2.png
 rm -rf /jffs/softcenter/res/ss_proc_status.htm
-rm -rf /jffs/softcenter/init.d/S89Socks5.sh
+rm -rf /jffs/softcenter/init.d/S99socks5.sh
 rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
 rm -rf /jffs/softcenter/init.d/N99shadowsocks.sh
 find /jffs/softcenter/init.d/ -name "*socks5.sh" | xargs rm -rf
@@ -109,14 +113,14 @@ if [ -n "`ls /tmp/ss_backup/P*.sh 2>/dev/null`" ];then
 fi
 
 echo_date 创建一些二进制文件的软链接！
-[ ! -L "/jffs/softcenter/bin/rss-tunnel" ] && cp -rf /jffs/softcenter/bin/rss-local /jffs/softcenter/bin/rss-tunnel
-[ ! -L "/jffs/softcenter/bin/base64" ] && cp -rf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/base64
-[ ! -L "/jffs/softcenter/bin/shuf" ] && cp -rf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/shuf
-[ ! -L "/jffs/softcenter/bin/netstat" ] && cp -rf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/netstat
-[ ! -L "/jffs/softcenter/bin/base64_decode" ] && cp -rf /jffs/softcenter/bin/base64_encode /jffs/softcenter/bin/base64_decode
-[ ! -L "/jffs/softcenter/init.d/S99socks5.sh" ] && cp -rf /jffs/softcenter/scripts/ss_socks5.sh /jffs/softcenter/init.d/S99socks5.sh
-[ ! -L "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
-[ ! -L "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
+[ ! -L "/jffs/softcenter/bin/rss-tunnel" ] && ln -sf /jffs/softcenter/bin/rss-local /jffs/softcenter/bin/rss-tunnel
+[ ! -L "/jffs/softcenter/bin/base64" ] && ln -sf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/base64
+[ ! -L "/jffs/softcenter/bin/shuf" ] && ln -sf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/shuf
+[ ! -L "/jffs/softcenter/bin/netstat" ] && ln -sf /jffs/softcenter/bin/koolbox /jffs/softcenter/bin/netstat
+[ ! -L "/jffs/softcenter/bin/base64_decode" ] && ln -sf /jffs/softcenter/bin/base64_encode /jffs/softcenter/bin/base64_decode
+[ ! -L "/jffs/softcenter/init.d/S99socks5.sh" ] && ln -sf /jffs/softcenter/scripts/ss_socks5.sh /jffs/softcenter/init.d/S99socks5.sh
+[ ! -L "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
+[ ! -L "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && ln -sf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
 
 echo_date 设置一些默认值
 [ -z "$ss_dns_china" ] && dbus set ss_dns_china=11
