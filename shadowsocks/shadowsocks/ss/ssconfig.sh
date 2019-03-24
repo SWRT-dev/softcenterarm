@@ -20,6 +20,7 @@ IFIP_DNS2=`echo $ISP_DNS2|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
 lan_ipaddr=$(nvram get lan_ipaddr)
 ip_prefix_hex=`nvram get lan_ipaddr | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("00/0xffffff00\n")}'`
 ARG_OBFS=""
+NAT_START=/jffs/scripts/nat-start
 
 #-----------------------------------------------
 get_config(){
@@ -944,8 +945,30 @@ start_haveged(){
 auto_start(){
 	[ ! -e "/jffs/softcenter/init.d/S99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/S99shadowsocks.sh
 	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
+
+}
+write_nat_start(){
+	echo_date 添加nat-start触发事件...
+	if [ ! -f $NAT_START ]; then
+		cat > $NAT_START <<-EOF
+		#!/bin/sh
+		EOF
+	fi
+
+	fire_rule=$(cat $NAT_START | grep ssconfig)
+	if [ -z "$fire_rule" ];then
+		cat >> $NAT_START <<-EOF
+		/bin/sh /jffs/softcenter/ss/ssconfig.sh
+		EOF
+	fi
 }
 
+remove_nat_start(){
+	fire_rule=$(cat $NAT_START | grep ssconfig)
+	if [ ! -z "$fire_rule" ];then
+		sed -i '/ssconfig/d' $NAT_START >/dev/null 2>&1
+	fi
+}
 start_kcp(){
 	# Start kcp
 	if [ "$ss_basic_use_kcp" == "1" ];then
@@ -2138,21 +2161,21 @@ detect(){
 		close_in_five
 	fi
 	#检测v2ray模式下是否启用虚拟内存
-	if [ "$ss_basic_type" == "3" -a -z "$WAN_ACTION" ];then
-		if [ "$MODEL" != "BLUECAVE" ];then
-			SWAPSTATUS=`free|grep Swap|awk '{print $2}'`
-			if [ "$SWAPSTATUS" != "0" ];then
-				echo_date "你选择了v2ray节点，当前系统已经启用虚拟内存！！符合启动条件！"
-			else
-				echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-				echo_date "+          你选择了v2ray节点，而当前系统未启用虚拟内存！               +"
-				echo_date "+        v2ray程序对路由器开销极大，请挂载虚拟内存后再开启！            +"
-				echo_date "+       如果使用 ws + tls + web 方案，建议1G虚拟内存，以保证稳定！     +"
-				echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-				close_in_five
-			fi
-		fi
-	fi
+	#if [ "$ss_basic_type" == "3" -a -z "$WAN_ACTION" ];then
+	#	if [ "$MODEL" != "BLUECAVE" ];then
+			#SWAPSTATUS=`free|grep Swap|awk '{print $2}'`
+			#if [ "$SWAPSTATUS" != "0" ];then
+			#	echo_date "你选择了v2ray节点，当前系统已经启用虚拟内存！！符合启动条件！"
+			#else
+			#	echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			#	echo_date "+          你选择了v2ray节点，而当前系统未启用虚拟内存！               +"
+			#	echo_date "+        v2ray程序对路由器开销极大，请挂载虚拟内存后再开启！            +"
+			#	echo_date "+       如果使用 ws + tls + web 方案，建议1G虚拟内存，以保证稳定！     +"
+			#	echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			#	close_in_five
+			#fi
+	#	fi
+	#fi
 	
 	# 检测是否在lan设置中是否自定义过dns,如果有给干掉
 	if [ -n "`nvram get dhcp_dns1_x`" ];then
@@ -2271,6 +2294,7 @@ apply_ss(){
 	remove_ss_trigger_job
 	remove_ss_reboot_job
 	restore_conf
+	remove_nat_start
 	# restart dnsmasq when ss server is not ip or on router boot
 	restart_dnsmasq
 	flush_nat
@@ -2286,6 +2310,7 @@ apply_ss(){
 	ss_arg
 	load_module
 	creat_ipset
+	write_nat_start
 	create_dnsmasq_conf
 	# do not re generate json on router start, use old one
 	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" != "3" ] && creat_ss_json
@@ -2356,6 +2381,7 @@ start)
 	;;
 stop)
 	set_lock
+	remove_nat_start
 	disable_ss
 	echo_date
 	echo_date 你已经成功关闭科学上网服务~

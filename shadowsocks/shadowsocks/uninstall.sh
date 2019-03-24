@@ -48,13 +48,13 @@ rm -rf /jffs/softcenter/res/game.png
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/gameV2.png
 rm -rf /jffs/softcenter/res/ss_proc_status.htm
-rm -rf /jffs/softcenter/init.d/S89Socks5.sh
+rm -rf /jffs/softcenter/init.d/S99socks5.sh
 rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
 rm -rf /jffs/softcenter/init.d/N99shadowsocks.sh
 
 # remove start up command
-sed -i '/ssconfig.sh/d' /jffs/softcenter/scripts/wan-start >/dev/null 2>&1
-sed -i '/ssconfig.sh/d' /jffs/softcenter/scripts/nat-start >/dev/null 2>&1
+sed -i '/ssconfig.sh/d' /jffs/scripts/wan-start >/dev/null 2>&1
+sed -i '/ssconfig.sh/d' /jffs/scripts/nat-start >/dev/null 2>&1
 
 dbus remove softcenter_module_shadowsocks_home_url
 dbus remove softcenter_module_shadowsocks_install

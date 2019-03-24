@@ -69,7 +69,7 @@ rm -rf /jffs/softcenter/res/game.png
 rm -rf /jffs/softcenter/res/shadowsocks.css
 rm -rf /jffs/softcenter/res/gameV2.png
 rm -rf /jffs/softcenter/res/ss_proc_status.htm
-rm -rf /jffs/softcenter/init.d/S89Socks5.sh
+rm -rf /jffs/softcenter/init.d/S99socks5.sh
 rm -rf /jffs/softcenter/init.d/S99shadowsocks.sh
 rm -rf /jffs/softcenter/init.d/N99shadowsocks.sh
 find /jffs/softcenter/init.d/ -name "*socks5.sh" | xargs rm -rf

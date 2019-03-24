@@ -92,7 +92,7 @@ echo_version(){
 	echo "cdns			1.0 		2017年12月09日编译"
 	echo "chinadns1		1.3.2 		2017年12月09日编译"
 	echo "chinadns2		2.0.0 		2017年12月09日编译"
-	echo "client_linux_mips	20181114	kcptun"
+	echo "client_linux_arm	20181114	kcptun"
 	echo "v2ray			$ss_basic_v2ray_version		$ss_basic_v2ray_date"
 	echo -----------------------------------------------------------
 }
@@ -110,7 +110,7 @@ check_status(){
 	CDNS=`pidof cdns`
 	CHINADNS1=`pidof chinadns1`
 	CHINADNS=`pidof chinadns`
-	KCPTUN=`pidof client_linux_mips`
+	KCPTUN=`pidof client_linux_arm`
 	HAPROXY=`pidof haproxy`
 	V2RAY=`pidof v2ray`
 	HDP=`pidof https_dns_proxy`
