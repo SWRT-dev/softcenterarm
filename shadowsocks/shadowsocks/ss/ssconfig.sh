@@ -1442,7 +1442,7 @@ creat_v2ray_json(){
 								"users": [
 									{
 										"id": "$ss_basic_v2ray_uuid",
-										"alterId": "$ss_basic_v2ray_alterid",
+										"alterId": $ss_basic_v2ray_alterid,
 										"security": "$ss_basic_v2ray_security"
 									}
 								]
