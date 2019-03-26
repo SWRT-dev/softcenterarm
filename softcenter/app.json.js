@@ -161,10 +161,10 @@
             "version": "0.0.9"
         }, 
         {
-            "build_date": "2019-03-11_23:45:27", 
+            "build_date": "2019-03-26_11:27:56", 
             "description": "使用Dnspod的ddns服务", 
             "home_url": "Module_ddnspod.asp", 
-            "md5": "977ff1b340ec0a4583aab29f638e0ea6", 
+            "md5": "333cb2798401a77f18428427c9ced25c", 
             "name": "ddnspod", 
             "tar_url": "ddnspod/ddnspod.tar.gz", 
             "title": "DDnspod", 
