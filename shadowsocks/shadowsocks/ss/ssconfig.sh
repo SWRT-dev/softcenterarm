@@ -261,106 +261,143 @@ restore_conf(){
 
 kill_process(){
 	v2ray_process=`pidof v2ray`
-	if [ -n "$v2ray_process" ];then 
+	if [ -n "$v2ray_process" ];then
 		echo_date 关闭V2Ray进程...
 		# 有时候killall杀不了v2ray进程，所以用不同方式杀两次
 		killall v2ray >/dev/null 2>&1
 		kill -9 "$v2ray_process" >/dev/null 2>&1
 	fi
+
 	ssredir=`pidof ss-redir`
-	if [ -n "$ssredir" ];then 
+	if [ -n "$ssredir" ];then
 		echo_date 关闭ss-redir进程...
 		killall ss-redir >/dev/null 2>&1
+		kill -9 "$ssredir" >/dev/null 2>&1
 	fi
 
 	rssredir=`pidof rss-redir`
-	if [ -n "$rssredir" ];then 
+	if [ -n "$rssredir" ];then
 		echo_date 关闭ssr-redir进程...
 		killall rss-redir >/dev/null 2>&1
-	fi
-	sslocal=`ps | grep -w ss-local | grep -v "grep" | grep -w "23456" | awk '{print $1}'`
-	if [ -n "$sslocal" ];then 
-		echo_date 关闭ss-local进程:23456端口...
-		kill $sslocal  >/dev/null 2>&1
+		kill -9 "$rssredir" >/dev/null 2>&1
 	fi
 
-	ssrlocal=`ps | grep -w rss-local | grep -v "grep" | grep -w "23456" | awk '{print $1}'`
-	if [ -n "$ssrlocal" ];then 
-		echo_date 关闭ssr-local进程:23456端口...
-		kill $ssrlocal  >/dev/null 2>&1
+	#sslocal=`ps | grep -w ss-local | grep -v "grep" | grep -w "23456" | awk '{print $1}'`
+	#if [ -n "$sslocal" ];then 
+	#	echo_date 关闭ss-local进程:23456端口...
+	#	kill $sslocal  >/dev/null 2>&1
+	#fi
+
+	sslocal=`pidof ss-local`
+	if [ -n "$sslocal" ];then
+		echo_date 关闭ss-local进程:23456端口...
+		killall ss-local >/dev/null 2>&1
+		kill -9 "$sslocal" >/dev/null 2>&1
 	fi
+
+	#ssrlocal=`ps | grep -w rss-local | grep -v "grep" | grep -w "23456" | awk '{print $1}'`
+	#if [ -n "$ssrlocal" ];then 
+	#	echo_date 关闭ssr-local进程:23456端口...
+	#	kill rss-local  >/dev/null 2>&1
+	#	ssrlocal_process=`pidof ssr-local`
+	#	kill -9 "$ssrlocal_process" >/dev/null 2>&1
+	#fi
+
+	rsslocal=`pidof rss-local`
+	if [ -n "$rsslocal" ];then
+		echo_date 关闭ssr-local进程:23456端口...
+		killall rss-local >/dev/null 2>&1
+		kill -9 "$rsslocal" >/dev/null 2>&1
+	fi
+
 	sstunnel=`pidof ss-tunnel`
-	if [ -n "$sstunnel" ];then 
+	if [ -n "$sstunnel" ];then
 		echo_date 关闭ss-tunnel进程...
 		killall ss-tunnel >/dev/null 2>&1
 	fi
+
 	rsstunnel=`pidof rss-tunnel`
-	if [ -n "$rsstunnel" ];then 
+	if [ -n "$rsstunnel" ];then
 		echo_date 关闭rss-tunnel进程...
 		killall rss-tunnel >/dev/null 2>&1
 	fi
+
 	chinadns_process=`pidof chinadns`
-	if [ -n "$chinadns_process" ];then 
+	if [ -n "$chinadns_process" ];then
 		echo_date 关闭chinadns2进程...
 		killall chinadns >/dev/null 2>&1
 	fi
+
 	chinadns1_process=`pidof chinadns1`
-	if [ -n "$chinadns1_process" ];then 
+	if [ -n "$chinadns1_process" ];then
 		echo_date 关闭chinadns1进程...
 		killall chinadns1 >/dev/null 2>&1
 	fi
+
 	cdns_process=`pidof cdns`
-	if [ -n "$cdns_process" ];then 
+	if [ -n "$cdns_process" ];then
 		echo_date 关闭cdns进程...
 		killall cdns >/dev/null 2>&1
 	fi
+
 	dns2socks_process=`pidof dns2socks`
-	if [ -n "$dns2socks_process" ];then 
+	if [ -n "$dns2socks_process" ];then
 		echo_date 关闭dns2socks进程...
 		killall dns2socks >/dev/null 2>&1
+		kill -9 "$dns2socks_process" >/dev/null 2>&1
+
 	fi
+
 	koolgame_process=`pidof koolgame`
-	if [ -n "$koolgame_process" ];then 
+	if [ -n "$koolgame_process" ];then
 		echo_date 关闭koolgame进程...
 		killall koolgame >/dev/null 2>&1
 	fi
+
 	pdu_process=`pidof pdu`
-	if [ -n "$pdu_process" ];then 
+	if [ -n "$pdu_process" ];then
 		echo_date 关闭pdu进程...
 		kill -9 $pdu >/dev/null 2>&1
 	fi
+
 	client_linux_arm5_process=`pidof client_linux_arm5`
-	if [ -n "$client_linux_arm5_process" ];then 
+	if [ -n "$client_linux_arm5_process" ];then
 		echo_date 关闭kcp协议进程...
 		killall client_linux_arm5 >/dev/null 2>&1
 	fi
+
 	haproxy_process=`pidof haproxy`
-	if [ -n "$haproxy_process" ];then 
+	if [ -n "$haproxy_process" ];then
 		echo_date 关闭haproxy进程...
 		killall haproxy >/dev/null 2>&1
 	fi
+
 	speederv1_process=`pidof speederv1`
-	if [ -n "$speederv1_process" ];then 
+	if [ -n "$speederv1_process" ];then
 		echo_date 关闭speederv1进程...
 		killall speederv1 >/dev/null 2>&1
 	fi
+
 	speederv2_process=`pidof speederv2`
-	if [ -n "$speederv2_process" ];then 
+	if [ -n "$speederv2_process" ];then
 		echo_date 关闭speederv2进程...
 		killall speederv2 >/dev/null 2>&1
 	fi
+
 	ud2raw_process=`pidof udp2raw`
-	if [ -n "$ud2raw_process" ];then 
+	if [ -n "$ud2raw_process" ];then
 		echo_date 关闭ud2raw进程...
 		killall udp2raw >/dev/null 2>&1
 	fi
+
 	https_dns_proxy_process=`pidof https_dns_proxy`
-	if [ -n "$https_dns_proxy_process" ];then 
+	if [ -n "$https_dns_proxy_process" ];then
 		echo_date 关闭https_dns_proxy进程...
 		killall https_dns_proxy >/dev/null 2>&1
 	fi
+
 	haveged_process=`pidof haveged`
-	if [ -n "$haveged_process" ];then 
+	if [ -n "$haveged_process" ];then
 		echo_date 关闭haveged进程...
 		killall haveged >/dev/null 2>&1
 	fi
@@ -1442,7 +1479,7 @@ creat_v2ray_json(){
 								"users": [
 									{
 										"id": "$ss_basic_v2ray_uuid",
-										"alterId": "$ss_basic_v2ray_alterid",
+										"alterId": $ss_basic_v2ray_alterid,
 										"security": "$ss_basic_v2ray_security"
 									}
 								]
