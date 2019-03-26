@@ -227,7 +227,7 @@ install_binary(){
 move_binary(){
 	echo_date "开始替换v2ray二进制文件... "
 	mv /tmp/v2ray/v2ray /jffs/softcenter/bin/v2ray
-	mv /tmp/v2ray/v2ctl /jffs/softcenter/bin/
+	mv /tmp/v2ray/v2ctl /jffs/softcenter/bin/v2ctl
 	chmod +x /jffs/softcenter/bin/v2*
 	V2RAY_LOCAL_VER=`/jffs/softcenter/bin/v2ray -version 2>/dev/null | head -n 1 | cut -d " " -f2`
 	V2RAY_LOCAL_DATE=`/jffs/softcenter/bin/v2ray -version 2>/dev/null | head -n 1 | cut -d " " -f5`
