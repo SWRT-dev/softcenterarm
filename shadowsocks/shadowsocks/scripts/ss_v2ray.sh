@@ -236,12 +236,29 @@ move_binary(){
 	echo_date "v2ray二进制文件替换成功... "
 }
 
+close_in_five(){
+	echo_date "插件将在5秒后自动关闭！！"
+	local i=5
+	while [ $i -ge 0 ]
+	do
+		sleep 1
+		echo_date $i
+		let i--
+	done
+	dbus set ss_basic_enable="0"
+	disable_ss >/dev/null
+	echo_date "插件已关闭！！"
+	echo_date ======================= 梅林固件 - 【科学上网】 ========================
+	unset_lock
+	exit
+}
+
 start_v2ray(){
 	echo_date "开启v2ray进程... "
 	cd /jffs/softcenter/bin
-	export GOGC=30
+	#export GOGC=30
 	v2ray --config=/jffs/softcenter/ss/v2ray.json >/dev/null 2>&1 &
-	
+	local V2PID
 	local i=10
 	until [ -n "$V2PID" ]
 	do

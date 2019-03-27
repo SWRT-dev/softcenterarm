@@ -20,7 +20,6 @@ IFIP_DNS2=`echo $ISP_DNS2|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
 lan_ipaddr=$(nvram get lan_ipaddr)
 ip_prefix_hex=`nvram get lan_ipaddr | awk -F "." '{printf ("0x%02x", $1)} {printf ("%02x", $2)} {printf ("%02x", $3)} {printf ("00/0xffffff00\n")}'`
 ARG_OBFS=""
-NAT_START=/jffs/scripts/nat-start
 
 #-----------------------------------------------
 get_config(){
@@ -48,7 +47,7 @@ get_config(){
 	ss_basic_password=`echo $ss_basic_password|base64_decode`
 	ss_basic_server_orig=$ss_basic_server
 
-# 兼容3.8.9及其以下
+	# 兼容3.8.9及其以下
 	[ -z "$ss_basic_type" ] && {
 		if [ -n "$ss_basic_rss_protocol" ];then
 			ss_basic_type="1"
@@ -283,7 +282,7 @@ kill_process(){
 	fi
 
 	#sslocal=`ps | grep -w ss-local | grep -v "grep" | grep -w "23456" | awk '{print $1}'`
-	#if [ -n "$sslocal" ];then 
+	#if [ -n "$sslocal" ];then
 	#	echo_date 关闭ss-local进程:23456端口...
 	#	kill $sslocal  >/dev/null 2>&1
 	#fi
@@ -296,7 +295,7 @@ kill_process(){
 	fi
 
 	#ssrlocal=`ps | grep -w rss-local | grep -v "grep" | grep -w "23456" | awk '{print $1}'`
-	#if [ -n "$ssrlocal" ];then 
+	#if [ -n "$ssrlocal" ];then
 	#	echo_date 关闭ssr-local进程:23456端口...
 	#	kill rss-local  >/dev/null 2>&1
 	#	ssrlocal_process=`pidof ssr-local`
@@ -424,8 +423,8 @@ ss_pre_start(){
 		fi
 	fi
 }
-# ================================= ss start ==============================
 
+# ================================= ss start ==============================
 resolv_server_ip(){
 	local tmp server_ip
 	if [ "$ss_basic_type" == "3" ] && [ "$ss_basic_v2ray_use_json" == "1" ];then
@@ -495,6 +494,7 @@ ss_arg(){
 		fi
 	fi
 }
+
 # create shadowsocks config file...
 creat_ss_json(){
 	if [ "$ss_basic_type" == "0" ];then
@@ -984,28 +984,19 @@ auto_start(){
 	[ ! -e "/jffs/softcenter/init.d/N99shadowsocks.sh" ] && cp -rf /jffs/softcenter/ss/ssconfig.sh /jffs/softcenter/init.d/N99shadowsocks.sh
 
 }
+
 write_nat_start(){
 	echo_date 添加nat-start触发事件...
-	if [ ! -f $NAT_START ]; then
-		cat > $NAT_START <<-EOF
-		#!/bin/sh
-		EOF
-	fi
-
-	fire_rule=$(cat $NAT_START | grep ssconfig)
-	if [ -z "$fire_rule" ];then
-		cat >> $NAT_START <<-EOF
-		/bin/sh /jffs/softcenter/ss/ssconfig.sh
-		EOF
-	fi
+	dbus set __event__onnatstart_ssconfig="/jffs/softcenter/ss/ssconfig.sh"
 }
 
 remove_nat_start(){
-	fire_rule=$(cat $NAT_START | grep ssconfig)
-	if [ ! -z "$fire_rule" ];then
-		sed -i '/ssconfig/d' $NAT_START >/dev/null 2>&1
-	fi
+	[ -n "`dbus get __event__onnatstart_ssconfig`" ] && {
+		echo_date 删除nat-start触发...
+		dbus remove __event__onnatstart_ssconfig
+	}
 }
+
 start_kcp(){
 	# Start kcp
 	if [ "$ss_basic_use_kcp" == "1" ];then
@@ -1689,6 +1680,7 @@ kill_cron_job(){
 		sed -i '/ssnodeupdate/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
 	fi
 }
+
 #--------------------------------------nat part begin------------------------------------------------
 load_tproxy(){
 	MODULES="nf_tproxy_core xt_TPROXY xt_socket xt_comment"
