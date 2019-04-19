@@ -273,7 +273,7 @@ creat_v2ray_json(){
 	if [ -n "$result" ];then
 		echo "$(date "+%F %T") $result" >> /tmp/v2ray.log
 		echo "$(date "+%F %T") V2Ray配置文件通过测试!!!" >> /tmp/v2ray.log
-		/jffs/softcenter/bin/v2ctl config < "$V2RAY_CONFIG_FILE" > "$TEMP_CONFIG_FILE"
+		/jffs/softcenter/bin/v2ctl config < "$V2RAY_CONFIG_FILE" > "$V2RAY_CONFIG_FILE_PB"
 	else
 		rm -rf "$V2RAY_CONFIG_FILE_TMP"
 		rm -rf "$V2RAY_CONFIG_FILE"
