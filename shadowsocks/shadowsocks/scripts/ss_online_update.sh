@@ -930,6 +930,7 @@ start_update(){
 	rm -rf /tmp/all_onlineservers >/dev/null 2>&1
 	rm -rf /tmp/all_group_info.txt >/dev/null 2>&1
 	rm -rf /tmp/group_info.txt >/dev/null 2>&1
+	rm -rf /jffs/softcenter/configs/ss_conf.sh >/dev/null 2>&1
 	echo_date "==================================================================="
 	echo_date "所有订阅任务完成，请等待6秒，或者手动关闭本窗口！"
 	echo_date "==================================================================="
