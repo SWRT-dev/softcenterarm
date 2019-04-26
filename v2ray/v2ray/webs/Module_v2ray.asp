@@ -176,6 +176,10 @@ if (E("v2ray_use_json").checked == true){
 				alert("错误！检测到你输入的v2ray配置不是标准json格式！");
 				return false;
 			}
+}else{
+	if (E("v2ray_mux_enable").checked == true){
+		document.form.v2ray_mux_enable.value = 1;
+	}
 }
 showLoading(5);
 document.form.submit();
@@ -320,6 +324,7 @@ function verifyFields(r) {
 <input type="hidden" name="ss_foreign_state" value="<% nvram_get('ss_foreign_state'); %>">
 <input type="hidden" name="v2ray_dns" value="<% dbus_get_def('v2ray_dns', '0'); %>">
 <input type="hidden" name="v2ray_use_json" value="<% dbus_get_def('v2ray_use_json', '0'); %>">
+<input type="hidden" name="v2ray_mux_enable" value="<% dbus_get_def('v2ray_mux_enable', '0'); %>">
 <input type="hidden" name="v2ray_json" value="<% dbus_get_def('v2ray_json', ''); %>">
 <table class="content" align="center" cellpadding="0" cellspacing="0" >
 <tr>

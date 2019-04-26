@@ -496,7 +496,7 @@ ss_arg(){
 }
 
 # create shadowsocks config file...
-creat_ss_json(){
+create_ss_json(){
 	if [ "$ss_basic_type" == "0" ];then
 		echo_date 创建SS配置文件到$CONFIG_FILE
 		cat > $CONFIG_FILE <<-EOF
@@ -1309,7 +1309,7 @@ get_path(){
 	fi
 }
 
-creat_v2ray_json(){
+create_v2ray_json(){
 	local tmp v2ray_server_ip
 	rm -rf "$V2RAY_CONFIG_FILE_TMP"
 	rm -rf "$V2RAY_CONFIG_FILE"
@@ -1499,7 +1499,7 @@ creat_v2ray_json(){
 		echo_date 使用自定义的v2ray json配置文件...
 		echo "$ss_basic_v2ray_json" | base64_decode > "$V2RAY_CONFIG_FILE_TMP"
 
-		OUTBOUND=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .outbound`
+		OUTBOUND=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .outbounds`
 		#JSON_INFO=`cat "$V2RAY_CONFIG_FILE_TMP" | jq 'del (.inbound) | del (.inboundDetour) | del (.log)'`
 		#INBOUND_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
 		#INBOUND_DETOUR_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
@@ -1535,20 +1535,20 @@ creat_v2ray_json(){
 						]
 						}"
 		echo_date 解析V2Ray配置文件...
-		echo $TEMPLATE | jq --argjson args "$OUTBOUND" '. + {outbound: $args}' > "$V2RAY_CONFIG_FILE"
+		echo $TEMPLATE | jq --argjson args "$OUTBOUND" '. + {outbounds: $args}' > "$V2RAY_CONFIG_FILE"
 		echo_date V2Ray配置文件写入成功到"$V2RAY_CONFIG_FILE"
 		
 		# 检测用户json的服务器ip地址
-		v2ray_protocal=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.protocol`
-		case $v2ray_protocal in
+		v2ray_protocol=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds.protocol`
+		case $v2ray_protocol in
 		vmess)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.vnext[0].address`
+			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds.settings.vnext[0].address`
 			;;
 		socks)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
+			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds.settings.servers[0].address`
 			;;
 		shadowsocks)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
+			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbounds.settings.servers[0].address`
 			;;
 		*)
 			v2ray_server=""
@@ -1634,7 +1634,7 @@ creat_v2ray_json(){
 start_v2ray(){
 	cd /jffs/softcenter/bin
 	#export GOGC=30
-	v2ray --config=/jffs/softcenter/ss/v2ray.json >/dev/null 2>&1 &
+	v2ray -config=/jffs/softcenter/ss/v2ray.json >/dev/null 2>&1 &
 	local V2PID
 	local i=10
 	until [ -n "$V2PID" ]
@@ -1769,7 +1769,7 @@ flush_nat(){
 }
 
 # creat ipset rules
-creat_ipset(){
+create_ipset(){
 	echo_date 创建ipset名单
 	ipset -! create white_list nethash && ipset flush white_list
 	ipset -! create black_list nethash && ipset flush black_list
@@ -2143,7 +2143,7 @@ load_nat(){
 		nat_ready=$(iptables -t nat -L PREROUTING -v -n --line-numbers|grep -v PREROUTING|grep -v destination)
 	done
 	echo_date "加载nat规则!"
-	#creat_ipset
+	#create_ipset
 	add_white_black_ip
 	apply_nat_rules
 	chromecast
@@ -2338,12 +2338,12 @@ apply_ss(){
 	resolv_server_ip
 	ss_arg
 	load_module
-	creat_ipset
+	create_ipset
 	write_nat_start
 	create_dnsmasq_conf
 	# do not re generate json on router start, use old one
-	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" != "3" ] && creat_ss_json
-	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" = "3" ] && creat_v2ray_json
+	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" != "3" ] && create_ss_json
+	[ -z "$WAN_ACTION" ] && [ "$ss_basic_type" = "3" ] && create_v2ray_json
 	[ "$ss_basic_type" == "0" ] || [ "$ss_basic_type" == "1" ] && start_ss_redir
 	[ "$ss_basic_type" == "2" ] && start_koolgame
 	[ "$ss_basic_type" == "3" ] && start_v2ray
