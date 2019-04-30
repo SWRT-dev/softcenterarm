@@ -21,99 +21,44 @@
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
-<script type="text/javascript" src="/dbconf?p=adbyby_&v=<% uptime(); %>"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
-
-
+<script type="text/javascript" src="/dbconf?p=adbyby_&v=<% uptime(); %>"></script>
 <script>
 	var $j = jQuery.noConflict();
 function init() {
-	show_menu();
-	//line_show();
+	show_menu(menu_hook);
 	buildswitch();
-    version_show();
-    setTimeout("version_show()", 3000);
-    /*
-    var ss_mode = '<% nvram_get("ss_mode"); %>';
-	if(ss_mode != "0" && ss_mode != 'undefined'){
-		$j("#warn").html("<i>你开启了shadowsocks, 阿呆喵将只过滤国内广告</i>");
-	}else{
-		$j("#warn").html("<i>阿呆喵将过滤全部广告</i>");
-	}
-    */
-    var rrt = document.getElementById("switch");
-    if (document.form.adbyby_enable.value != "1") {
-        rrt.checked = false;
-    } else {
-        rrt.checked = true;
-    }
-}
-/*
-function line_show() {
-	if(typeof db_adbyby_ != "undefined") {
-		for(var field in db_adbyby_) {
-			var el = document.getElementById(field);
-				if(el != null) {
-				el.value = db_adbyby_[field];
-			}
-			var temp_ss = ["adbyby_user_txt"];
-			for (var i = 0; i < temp_ss.length; i++) {
-				temp_str = $G(temp_ss[i]).value;
-				$G(temp_ss[i]).value = temp_str.replaceAll(",","\n");
-			}
-		}
+	version_show();
+	var rrt = document.getElementById("switch");
+	if (document.form.adbyby_enable.value != "1") {
+        	rrt.checked = false;
+	} else {
+        	rrt.checked = true;
 	}
 }
 
-function validForm(){
-	var temp_ss = ["adbyby_user_txt"];
-	for(var i = 0; i < temp_ss.length; i++) {
-		var temp_str = $G(temp_ss[i]).value;
-		if(temp_str == "") {
-			continue;
-		}
-		var lines = temp_str.split("\n");
-		var rlt = "";
-		for(var j = 0; j < lines.length; j++) {
-			var nstr = lines[j].trim();
-			if(nstr != "") {
-				rlt = rlt + nstr + ",";
-			}
-		}
-		if(rlt.length > 0) {
-			rlt = rlt.substring(0, rlt.length-1);
-		}
-		if(rlt.length > 10000) {
-			alert(temp_ss[i] + " 不能超过10000个字符");
-			return false;
-		}
-		$G(temp_ss[i]).value = rlt;
-		
-	}	
+function done_validating() {
 	return true;
 }
-*/
 
 function buildswitch(){
 	$j("#switch").click(
 	function(){
 		if(document.getElementById('switch').checked){
 			document.form.adbyby_enable.value = 1;
-			//document.getElementById('adbyby_enable').value = 1;
-			
 		}else{
 			document.form.adbyby_enable.value = 0;
-			//document.getElementById('adbyby_enable').value = 0;
 		}
 	});
 }
 
-function onSubmitCtrl(o, s) {
-	//if(validForm()){
-		document.form.action_mode.value = s;
-		showLoading(7);
-		document.form.submit();
-	//}
+function onSubmitCtrl() {
+	showLoading(3);
+	document.form.submit();
+}
+
+function reload_Soft_Center() {
+	location.href = "/Main_Soft_center.asp";
 }
 
 function conf2obj(){
@@ -122,7 +67,7 @@ function conf2obj(){
 	url: "dbconf?p=adbyby_",
 	dataType: "script",
 	success: function(xhr) {
-    var p = "adbyby_";
+	var p = "adbyby_";
         var params = ["user_txt"];
         for (var i = 0; i < params.length; i++) {
 			if (typeof db_adbyby_[p + params[i]] !== "undefined") {
@@ -133,12 +78,10 @@ function conf2obj(){
 	});
 }
 
-
-
 function version_show(){
 	$j("#adbyby_version_status").html("<i>当前版本：" + db_adbyby_['adbyby_version']);
 
-    $j.ajax({
+	$j.ajax({
         url: 'https://raw.githubusercontent.com/paldier/softcenterarm/master/adbyby/config.json.js',
         type: 'GET',
         success: function(res) {
@@ -155,8 +98,9 @@ function version_show(){
     });
 }
 
-function reload_Soft_Center(){
-location.href = "/Main_Soft_center.asp";
+function menu_hook(title, tab) {
+	tabtitle[tabtitle.length -1] = new Array("", "软件中心", "离线安装", "adbyby");
+	tablink[tablink.length -1] = new Array("", "Main_Soft_center.asp", "Main_Soft_setting.asp", "Module_adbyby.asp");
 }
 </script>
 </head>
@@ -196,8 +140,7 @@ location.href = "/Main_Soft_center.asp";
 										<div style="float:right; width:15px; height:25px;margin-top:10px"><img id="return_btn" onclick="reload_Soft_Center();" align="right" style="cursor:pointer;position:absolute;margin-left:-30px;margin-top:-25px;" title="返回软件中心" src="/images/backprev.png" onMouseOver="this.src='/images/backprevclick.png'" onMouseOut="this.src='/images/backprev.png'"></img></div>
 										<div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
 										<div class="formfontdesc" style="padding-top:5px;margin-top:0px;float: left;" id="cmdDesc"></div>
-										<div id="adbyby_version_status" style="padding-top:5px;margin-left:0px;margin-top:0px;float: left;"><i>当前版本：<% dbus_get_def("adbyby_version", "0"); %></i></div>
-																	
+										<div id="adbyby_version_show" style="padding-top:5px;margin-left:1px;margin-top:0px;float: left;"><i>当前版本：<% dbus_get_def("adbyby_version", "未知"); %></i></div>							
 										<div class="formfontdesc" id="cmdDesc"></div>
 										<table style="margin:10px 0px 0px 0px;" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable" id="routing_table">
 											<thead>
@@ -272,7 +215,7 @@ location.href = "/Main_Soft_center.asp";
 											-->
                                     	</table>
 										<div class="apply_gen">
-											<button id="cmdBtn" class="button_gen" onclick="onSubmitCtrl(this, ' Refresh ')">提交</button>
+											<button id="cmdBtn" class="button_gen" onclick="onSubmitCtrl()">提交</button>
 										</div>
 										<div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
 										<div class="KoolshareBottom">
