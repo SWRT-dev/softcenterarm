@@ -1,0 +1,23 @@
+{
+  "UnblockNeteaseMusic": "解鎖網易雲灰色歌曲",
+  "Status": "運行狀態",
+  "Music app type": "音源選擇",
+  "Default": "默認",
+  "Netease": "網易雲音樂",
+  "QQ": "QQ音樂",
+  "Xiami": "蝦米音樂",
+  "Baidu": "百度音樂",
+  "Kugou": "酷狗音樂",
+  "Kuwo": "酷我音樂(高音質推薦)",
+  "Migu": "咕咪音樂",
+  "Enable": "啟用",
+  "Apply": "應用",
+  "Joox": "JOOX音樂",
+  "IOS/MAC IP": "IOS/MAC设备IP",
+  "Separated by spaces": "使用空格分隔",
+  "Download cert": "下載CA 根證書",
+  "Offline installation": "離線安裝",
+  "Software Center": "軟件中心",
+  "Autoupdate": "自動更新"
+}
+
