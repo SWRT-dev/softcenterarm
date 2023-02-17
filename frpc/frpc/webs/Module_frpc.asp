@@ -29,19 +29,14 @@
 .show-btn1, .show-btn2 {
     border: 1px solid #222;
     background: #576d73;
-    background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 10px 3.75px;
     border-radius: 5px 5px 0px 0px;
     width:15%;
-    border: 1px solid #91071f; /* W3C rogcss*/
-    background: none; /* W3C rogcss*/
     }
 .active {
     background: #2f3a3e;
-    background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
-    border: 1px solid #91071f; /* W3C rogcss*/
 }
 .close {
     background: red;
@@ -86,7 +81,6 @@
 .frpc_btn {
     border: 1px solid #222;
     background: linear-gradient(to bottom, #003333  0%, #000000 100%); /* W3C */
-	background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 5px 5px;
@@ -96,7 +90,6 @@
 .frpc_btn:hover {
     border: 1px solid #222;
     background: linear-gradient(to bottom, #27c9c9  0%, #279fd9 100%); /* W3C */
-	background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 5px 5px;
@@ -111,8 +104,6 @@
 	text-transform:none;
 	margin-top:5px;
 	overflow:scroll;
-	background:transparent; /* W3C rogcss*/
-	border:1px solid #91071f; /* W3C rogcss*/
 }
 .formbottomdesc {
     margin-top:10px;
@@ -126,7 +117,7 @@ input[type=button]:focus {
 var myid;
 var db_frpc = {};
 var node_max = 0;
-var params_input = ["frpc_domain", "frpc_common_cron_time", "frpc_common_cron_hour_min", "frpc_common_server_addr", "frpc_common_server_port", "frpc_common_protocol", "frpc_common_tcp_mux", "frpc_common_login_fail_exit", "frpc_common_privilege_token", "frpc_common_vhost_http_port", "frpc_common_vhost_https_port", "frpc_common_user", "frpc_common_log_file", "frpc_common_log_level", "frpc_common_log_max_days"]
+var params_input = ["frpc_domain", "frpc_common_cron_time", "frpc_common_cron_hour_min", "frpc_common_server_addr", "frpc_common_server_port", "frpc_common_protocol", "frpc_common_tcp_mux", "frpc_common_login_fail_exit", "frpc_common_privilege_token", "frpc_common_vhost_http_port", "frpc_common_vhost_https_port", "frpc_common_user", "frpc_common_log_file", "frpc_common_log_level", "frpc_common_log_max_days", "frpc_common_heartbeat_interval", "frpc_common_tls_enable", "frpc_common_cron_type"]
 var params_check = ["frpc_enable", "frpc_customize_conf"]
 var params_base64 = ["frpc_config"]
 function initial() {
@@ -213,7 +204,7 @@ function save() {
 			return false;
 		}
 	} else {
-		if (trim(E("frpc_common_server_addr").value) == "" || trim(E("frpc_common_server_port").value) == "" || trim(E("frpc_common_privilege_token").value) == "" || trim(E("frpc_common_vhost_http_port").value) == "" || trim(E("frpc_common_vhost_https_port").value) == "" || trim(E("frpc_common_user").value) == "" || trim(E("frpc_common_cron_time").value) == "") {
+		if (trim(E("frpc_common_server_addr").value) == "" || trim(E("frpc_common_server_port").value) == "" || trim(E("frpc_common_privilege_token").value) == "" || trim(E("frpc_common_cron_time").value) == "") {
 			alert("提交的表单不能为空!");
 			return false;
 		}
@@ -312,8 +303,8 @@ function addTr(o) {
 			document.form.localhost_node.value = "";
 			document.form.localport_node.value = "";
 			document.form.remoteport_node.value = "";
-			document.form.encryption_node.value = "true";
-			document.form.gzip_node.value = "true";
+			document.form.encryption_node.value = "(default)";
+			document.form.gzip_node.value = "(default)";
 			E('remoteport_node').disabled = false;
 			E('subdomain_node').disabled = true;
 		}
@@ -388,8 +379,8 @@ function editlTr(o) { //编辑节点功能，显示编辑面板
 	} else if (remoteport == "stcp") {
 		E('remoteport_node').disabled = true;
 		E('subdomain_node').disabled = false;
-		E('encryption_node').disabled = true;
-		E('gzip_node').disabled = true;
+		E('encryption_node').disabled = false;
+		E('gzip_node').disabled = false;
 		E('remoteport_node').value = "none";
 	} else if (remoteport == "tcp") {
 		E('remoteport_node').disabled = false;
@@ -451,7 +442,7 @@ function refresh_html() {
 		html = html + '<tr>';
 		html = html + '<td>' + c["proto_node"] + '</td>';
 		if (c["proto_node"] == "stcp") {
-			html = html + '<td><a href="javascript:void(0)" onclick="open_conf(\'stcp_settings\');" style="cursor:pointer;"><i><u>' + c["subname_node"] + '</u></i></a></td>';
+			html = html + '<td><a href="javascript:void(0)" onclick="open_conf(\'stcp_settings\');" style="cursor:pointer;"><em><u>' + c["subname_node"] + '</u></em></a></td>';
 		} else {
 			html = html + '<td>' + c["subname_node"] + '</td>';
 		}
@@ -467,13 +458,13 @@ function refresh_html() {
 		} else {
 			html = html + '<td>' + c["remoteport_node"] + '</td>';
 		}
-		if (c["proto_node"] == "stcp") {
-			html = html + '<td>' + "-" + '</td>';
-			html = html + '<td>' + "-" + '</td>';
-		} else {
+// 		if (c["proto_node"] == "stcp") {
+// 			html = html + '<td>' + "-" + '</td>';
+// 			html = html + '<td>' + "-" + '</td>';
+// 		} else {
 			html = html + '<td>' + c["encryption_node"] + '</td>';
 			html = html + '<td>' + c["gzip_node"] + '</td>';
-		}
+// 		}
 		html = html + '<td>';
 		html = html + '<input style="margin-left:-3px;" id="dd_node_' + c["node"] + '" class="edit_btn" type="button" onclick="editlTr(this);" value="">'
 		html = html + '</td>';
@@ -521,6 +512,17 @@ function get_stcp_conf() {
 		}
 	});
 }
+function get_frpc_log() {
+	$.ajax({
+		url: '/_temp/frpc_lnk.log',
+		type: 'GET',
+		cache:false,
+		dataType: 'text',
+		success: function(res) {
+			$('#logtxt').val(res);
+		}
+	});
+}
 function open_conf(open_conf) {
 	if (open_conf == "frpc_settings") {
 		get_frpc_conf();
@@ -529,6 +531,9 @@ function open_conf(open_conf) {
 	if (open_conf == "stcp_settings") {
 		get_stcp_conf();
 		console.log("444")
+	}
+	if (open_conf == "frpc_log") {
+		get_frpc_log();
 	}
 	$("#" + open_conf).fadeIn(200);
 }
@@ -603,8 +608,8 @@ function proto_onchange() {
 	} else if (remoteport == "stcp") {
 		E('remoteport_node').disabled = true;
 		E('subdomain_node').disabled = false;
-		E('encryption_node').disabled = true;
-		E('gzip_node').disabled = true;
+		E('encryption_node').disabled = false;
+		E('gzip_node').disabled = false;
 		E('subdomain_node').value = "";
 		E('remoteport_node').value = "none";
 	} else if (remoteport == "router-http") {
@@ -654,79 +659,88 @@ function openssHint(itemNum) {
 	width = "350px";
 	if (itemNum == 0) {
 		statusmenu = "如果发现开关不能开启，那么请检查<a href='Advanced_System_Content.asp'><u><font color='#00F'>系统管理 -- 系统设置</font></u></a>页面内Enable JFFS custom scripts and configs是否开启。";
-		_caption = "服务器说明";
+		_caption = "服务说明";
 	} else if (itemNum == 1) {
-		statusmenu = "此处填入你的frp服务器的地址。</br>建议优先填入<font color='#F46'>IP地址</font>。填入域名，特别是一些服务商给的复杂域名，有时遇到无法解析会导致无法连接!";
-		_caption = "服务器";
+		statusmenu = "此处填入你的frp服务器的地址。<br>若是固定ip，建议优先填入<font color='#F46'>IP地址</font>。动态ip，填入域名，某些服务商给的复杂域名，有时遇到无法解析会导致无法连接!";
+		_caption = "[common]的server_addr字段";
 	} else if (itemNum == 2) {
-		statusmenu = "此处填入你的frp服务器的端口，对应服务器配置文件中的节[common]下的bind_port字段";
-		_caption = "服务器端口";
+		statusmenu = "此处填入你的frp服务器的端口，依据底层通信协议的设置，对应服务器配置文件中的节[common]下的“***_bind_port”字段，例如：底层通信协议选quic时，端口使用服务端ini配置文件中 quic_bind_port 字段定义的端口。";
+		_caption = "[common]的server_port字段";
 	} else if (itemNum == 3) {
-		statusmenu = "此处填入你的frp服务器的特权授权码。对应服务器配置文件中的节[common]下的token字段。</br><font color='#F46'>注意：</font>使用带有特殊字符的密码，可能会导致frpc链接不上服务器。";
-		_caption = "Token";
+		statusmenu = "此处填入你的frp服务器的特权授权码。要与服务器配置文件相同。<br><font color='#F46'>注意：</font>使用带有特殊字符的密码，可能会导致frpc链接不上服务器。";
+		_caption = "[common]的token字段";
 	} else if (itemNum == 4) {
-		statusmenu = "此处填入你的frp服务器HTTP穿透服务的端口，对应服务器配置文件中的节[common]下的vhost_http_port字段";
-		_caption = "HTTP穿透服务端口";
+		statusmenu = "显示frpc服务的进程状态及pid";
+		_caption = "运行状态";
 	} else if (itemNum == 5) {
-		statusmenu = "此处填入你的frp服务器HTTPS穿透服务的端口，对应服务器配置文件中的节[common]下的vhost_https_port字段";
-		_caption = "HTTPS穿透服务端口";
+		statusmenu = "对应填写你的frp服务器HTTP和HTTPS穿透服务的端口，分别是服务器配置文件中的节[common]下的vhost_http_port和vhost_https_port字段";
+		_caption = "HTTP/HTTPS穿透服务端口";
 	} else if (itemNum == 6) {
-		statusmenu = "此处是否开启frpc客户端日志。</br><font color='#F46'>注意：</font>默认不开启，开启后日志路径为/tmp/frpc.log";
-		_caption = "日志记录";
+		statusmenu = "此处是否开启frpc客户端日志。<br><font color='#F46'>注意：</font>默认不开启，开启后日志路径为/tmp/frpc.log";
+		_caption = "[common]的log_file字段";
 	} else if (itemNum == 7) {
-		statusmenu = "此处选择日志记录等级。</br>可选内容：info、warn、error、debug。";
-		_caption = "日志等级";
+		statusmenu = "此处选择日志记录等级。<br>可选内容：trace,debug,info(默认值),warn,error。";
+		_caption = "[common]的log_level字段";
 	} else if (itemNum == 8) {
-		statusmenu = "此处选择要保留的日志天数。";
-		_caption = "日志记录天数";
+		statusmenu = "此处输入要保留日志记录文件的天数(不含当天)，留空，不设置即默认3天。在log文件目录可以找到按日期命名的文件，一天一个。";
+		_caption = "[common]的log_max_days字段";
 	} else if (itemNum == 9) {
-		statusmenu = "要穿透的协议类型，目前有http和tcp两种方式。";
-		_caption = "协议类型";
+		statusmenu = "要穿透的协议类型，目前可选http、https、tcp、stcp、udp类型，若要配置其他类型或使用插件功能，请使用“自定义设置”模式。";
+		_caption = "[代理项目]的type字段";
 	} else if (itemNum == 10) {
-		statusmenu = "此处输入穿透内容的命名（描述），如：ac68u-web或ac68u-webshell，对应客户端配置文件中的节名称。</br><font color='#F46'>注意：</font>frp服务器上的所有命名不能重复！";
-		_caption = "代理名称";
+		statusmenu = "此处输入穿透内容的命名，对应客户端配置文件中的节名称。<strong>当使用stcp类型添加规则后，可点击名称获得stcp访问者的参考配置文件</strong>。<br><font color='#F46'>注意：</font>frp的所有命名不能重复！";
+		_caption = "[代理项目]名称";
 	} else if (itemNum == 11) {
-		statusmenu = "此处输入穿透内容的域名，如：ac68u.frp.com，对应客户端配置文件中节下的custom_domains字段。</br><font color='#F46'>注意：</font>frp上运行的域名不能重复！";
-		_caption = "域名配置";
+		statusmenu = "此处输入http(s)类型的穿透内容的域名；<strong>或stcp类型的SK码</strong>。<br><font color='#F46'>注意：</font>frp上运行的域名不能重复！";
+		_caption = "[代理项目]对应custom_domains字段或sk字段";
 	} else if (itemNum == 12) {
 		statusmenu = "此处输入要穿透的内部主机IP地址，如：192.168.1.1";
-		_caption = "内网主机地址";
+		_caption = "[代理项目]的local_ip字段";
 	} else if (itemNum == 13) {
 		statusmenu = "此处输入要穿透的内部主机的端口，如：80或22";
-		_caption = "内网主机端口";
+		_caption = "[代理项目]的local_port字段";
 	} else if (itemNum == 14) {
-		statusmenu = "此处输入服务器端端口用来映射内部主机端口，如：80或8080</br><font color='#F46'>注意：</font>";
-		statusmenu += "</br><b><font color='#669900'>http协议：</font></b>选择http协议时，远程主机端口对应服务器配置文件中的节[common]下的vhost_http_port字段值。";
-		statusmenu += "</br><b><font color='#669900'>https协议：</font></b>选择https协议时，远程主机端口对应服务器配置文件中的节[common]下的vhost_https_port字段值。https协议只能对应穿透内网https协议。";
-		statusmenu += "</br><b><font color='#669900'>tcp协议：</font></b>选择tcp协议时，远程主机端口应在服务器配置文件中的节[common]下的privilege_allow_ports字段值范围内。";
-		_caption = "远程主机端口";
+		statusmenu = "此处输入服务器端端口用来映射内部主机端口，如：80或8080<br><font color='#F46'>注意：</font>";
+		statusmenu += "<br><b><font color='#669900'>http协议：</font></b>选择http协议时，远程主机端口对应服务器配置文件中的节[common]下的vhost_http_port字段值。";
+		statusmenu += "<br><b><font color='#669900'>https协议：</font></b>选择https协议时，远程主机端口对应服务器配置文件中的节[common]下的vhost_https_port字段值。https协议只能对应穿透内网https协议。";
+		statusmenu += "<br><b><font color='#669900'>tcp协议：</font></b>选择tcp协议时，远程主机端口应在服务器配置文件中的节[common]下的allow_ports字段值范围内。";
+		_caption = "[代理项目]的remote_port字段";
 	} else if (itemNum == 15) {
-		statusmenu = "如果公司内网防火墙对外网访问进行了流量识别与屏蔽，例如禁止了 ssh 协议等，通过设置加密，将 frpc 与 frps 之间的通信内容加密传输，将会有效防止流量被拦截。";
-		_caption = "加密";
+		statusmenu = "不进行配置，即默认关闭。开启加密，可有效防止流量被拦截。若<font color='#F46'>已启用全局TLS加密</font>，除 xtcp 外，此处不用再开启“加密”进行重复加密。加密将消耗一些cpu资源。";
+		_caption = "[代理项目]的use_encryption字段";
 	} else if (itemNum == 16) {
-		statusmenu = "如果传输的报文长度较长，通过设置对传输内容进行压缩，可以有效减小 frpc 与 frps 之间的网络流量，加快流量转发速度，但是会额外消耗一些 cpu 资源。";
-		_caption = "压缩";
+		statusmenu = "不进行配置，即默认关闭。如果传输的报文长度较长，开启压缩，可有效减小 frpc 与 frps 之间的网络流量，加快流量转发速度，但是会额外消耗一些 cpu 资源。";
+		_caption = "[代理项目]的use_compression字段";
 	} else if (itemNum == 17) {
-		statusmenu = "定时到Frp服务器上重新注册服务，以便Frp提供持续的服务。</br><font color='#F46'>注意：</font>填写内容为0时关闭该功能！";
-		_caption = "定时注册服务";
+		statusmenu = "定时执行操作，<font color='#F46'>检查：</font>检查frp的进程是否存在，若不存在则重新启动；<font color='#F46'>启动：</font>重新启动frp进程，而不论当时是否在正常运行。重新启动服务可能导致活动中的连接短暂中断.<br><font color='#F46'>注意：</font>填写内容为 0 关闭定时功能！建议：选择分钟填写“60的因数”，选择小时填写“24的因数”。";
+		_caption = "定时功能";
 	} else if (itemNum == 18) {
 		statusmenu = "如果穿透服务配置中内网主机地址是路由器管理地址，并且内网主机端口为80时，在网络地图DDNS处显示相应的域名配置。</br><font color='#F46'>注意：</font>此功能与路由系统自带的DDNS功能冲突，frp的DDNS显示设置会覆盖系统自带的DDNS设置！";
 		_caption = "DDNS显示设置";
 	} else if (itemNum == 19) {
-		statusmenu = "穿透服务的用户名称，如AC68U 配置结果为 {用户名称}.{代理名称}";
-		_caption = "Frpc用户名称";
+		statusmenu = "穿透服务的用户名称，用户较多时便于区分，若留空即不设置。设置后，结果表述为 {用户名称}.{代理名称}";
+		_caption = "[common]的user字段";
 	} else if (itemNum == 20) {
-		statusmenu = "从 v0.12.0 版本开始，底层通信协议支持选择 kcp 协议，在弱网环境下传输效率提升明显，但是会有一些额外的流量消耗";
-		_caption = "底层通信协议";
+		statusmenu = "默认tcp，还可选quic、kcp、websocket；<font color='#F46'>提示：</font>目前需要手动修改frpc“通信端口”匹配frps配置文件的端口号：tcp和websocket对应“bind_port”，kcp对应“kcp_bind_port”，quic对应“quic_bind_port”。其中 quic 协议，从 v0.46.0 版本开始支持，理论上速度更快，实际效果请自行测试（可能被运营商udp策略影响）.";
+		_caption = "[common]的protocol字段";
 	} else if (itemNum == 21) {
-		statusmenu = "从 v0.10.0 版本开始，客户端和服务器端之间的连接支持多路复用，不再需要为每一个用户请求创建一个连接，使连接建立的延迟降低，并且避免了大量文件描述符的占用，使 frp 可以承载更高的并发数。</br>该功能默认启用，如需关闭，可以在 frps.ini 和 frpc.ini 中配置，该配置项在服务端和客户端必须一致.";
-		_caption = "TCP 多路复用";
+		statusmenu = "frp默认开启，该配置在服务端和客户端必须一致。如需关闭，同时在 frps 和 frpc 中配置。<br>多路复用，不再需要为每一个用户请求创建一个连接，使连接建立的延迟降低，并且避免了大量文件描述符的占用，使 frp 可以承载更高的并发数。";
+		_caption = "[common]的tcp_mux字段";
 	} else if (itemNum == 22) {
-		statusmenu = "当客户端连接服务器失败后的动作：</br>失败后重复连接</br>失败后退出客户端";
-		_caption = "连接设置";
+		statusmenu = "当客户端首次连接服务器失败后的动作：<br>建议设置：重复连接<br>frp默认：退出客户端";
+		_caption = "[common]的login_fail_exit字段";
 	} else if (itemNum == 23) {
 		statusmenu = "按照官方教程自己编写配置文件";
 		_caption = "自定义配置";
+	} else if (itemNum == 24) {
+		statusmenu = "向服务端发送心跳包的间隔时间，不配置即默认30秒。<font color='#F46'>提示：</font>当frpc和frps开启TCP多路复用(tcp_mux)后，可将此值设为<font color='#F46'>负数</font>以禁用此项，以降低非必要流量消耗（因tcp_mux有心跳检测）；尤其适合某些使用付费流量或者流量限制的场景.";
+		_caption = "[common]的heartbeat_interval字段";
+	} else if (itemNum == 25) {
+		statusmenu = "默认关闭，若开启，frpc使用TLS 加密连接，但是不校验 frps 的证书，如需校验证书，请使用“自定义设置”模式进行配置。加密将消耗一些cpu资源。<font color='#F46'>提示：</font>启用此功能后，在设置“穿透服务配置”时，除 xtcp 外，不用再开启“加密”（use_encryption）重复加密.";
+		_caption = "[common]的tls_enable字段";
+	} else if (itemNum == 26) {
+		statusmenu = "查看正在生效的frp配置文件ini；若ini中定义了frp运行的日志记录文件也可以在此查看.";
+		_caption = "查看当前配置和日志";
 	}
 	return overlib(statusmenu, OFFSETX, -160, LEFT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, '');
 	var tag_name = document.getElementsByTagName('a');
@@ -779,7 +793,7 @@ function openssHint(itemNum) {
                                     <div style="float:left;" class="formfonttitle">软件中心 - Frpc内网穿透</div>
                                     <div style="float:right; width:15px; height:25px;margin-top:10px"><img id="return_btn" onclick="reload_Soft_Center();" align="right" style="cursor:pointer;position:absolute;margin-left:-30px;margin-top:-25px;" title="返回软件中心" src="/images/backprev.png" onMouseOver="this.src='/images/backprevclick.png'" onMouseOut="this.src='/images/backprev.png'"></img></div>
                                     <div style="margin:30px 0 10px 5px;" class="splitLine"></div>
-                                    <div class="formfontdesc"><i>* 为了Frpc稳定运行，请开启虚拟内存功能！！！</i></div>
+                                    <div class="formfontdesc">【获取链接：<a href="https://github.com/fatedier/frp/releases" target="_blank"><em><u>Releases (Github)</u></em></a>】【官方文档：<a href="https://gofrp.org/docs" target="_blank"><em><u>gofrp.org</u></em></a>】<br><i>* 点击参数设置项目的文字，可查看帮助信息 * *为了能稳定运行，强烈建议开启虚拟内存！*</i></div>
                                     <div id="frpc_switch_show">
                                     <table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
                                         <tr id="switch_tr">
@@ -802,7 +816,7 @@ function openssHint(itemNum) {
                                             </td>
                                         </tr>
                                         <tr id="frpc_status">
-                                            <th width="20%">运行状态</th>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(4)">运行状态</th>
                                             <td><span id="status">获取中...</span>
                                             </td>
                                         </tr>
@@ -815,20 +829,25 @@ function openssHint(itemNum) {
                                         </tr>
 
                                         <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(17)">定时注册服务</a>(<i>0为关闭</i>)</th>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(17)">定时功能(<i>0为关闭</i>)</a></th>
                                             <td>
-                                                每 <input type="text" id="frpc_common_cron_time" name="frpc_common_cron_time" class="input_3_table" maxlength="2" value="30" placeholder="" />
+                                                每 <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '')" id="frpc_common_cron_time" name="frpc_common_cron_time" class="input_3_table" maxlength="2" value="30" placeholder="" />
                                                 <select id="frpc_common_cron_hour_min" name="frpc_common_cron_hour_min" style="width:60px;margin:3px 2px 0px 2px;" class="input_option">
                                                     <option value="min" selected="selected">分钟</option>
                                                     <option value="hour">小时</option>
-                                                </select> 重新注册一次服务
+                                                </select> 重新
+                                                    <select id="frpc_common_cron_type" name="frpc_common_cron_type" style="width:60px;margin:3px 2px 0px 2px;" class="input_option">
+                                                        <option value="L1" selected="selected">检查</option>
+                                                        <option value="L2">启动</option>
+                                                    </select> 一次服务
                                             </td>
                                         </tr>
 
                                         <tr>
-                                            <th width="20%">查看当前配置</th>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(26)">查看当前配置和日志</th>
                                             <td>
-                                                <a type="button" class="frpc_btn" style="cursor:pointer" href="javascript:void(0);" onclick="open_conf('frpc_settings');" >查看当前配置</a>
+                                                <a type="button" class="frpc_btn" style="cursor:pointer" href="javascript:void(0);" onclick="open_conf('frpc_settings');" >查看当前配置</a>&nbsp;
+                                                <a type="button" class="frpc_btn" style="cursor:pointer" href="javascript:void(0);" onclick="open_conf('frpc_log');" >查看frp运行日志</a>
                                             </td>
                                         </tr>
                                     </table>
@@ -855,14 +874,31 @@ function openssHint(itemNum) {
                                         <tr>
                                             <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(1)">服务器</a></th>
                                             <td>
-                                                <input type="text" class="input_ss_table" value="" id="frpc_common_server_addr" name="frpc_common_server_addr" maxlength="20" value="" placeholder=""/>
+                                                <input type="text" class="input_ss_table" value="" id="frpc_common_server_addr" name="frpc_common_server_addr" maxlength="100" value="" placeholder="必填项"/>
                                             </td>
                                         </tr>
 
                                         <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(2)">端口</a></th>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(2)">通信端口</a></th>
                                             <td>
-                                        <input type="text" class="input_ss_table" id="frpc_common_server_port" name="frpc_common_server_port" maxlength="10" value="" />
+                                        <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" class="input_ss_table" id="frpc_common_server_port" name="frpc_common_server_port" maxlength="5" value="" placeholder="必填项" />
+                                            </td>
+                                        </tr>
+                                        
+                                        <tr>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(3)">令牌</a></th>
+                                            <td>
+                                                <input type="password" name="frpc_common_privilege_token" id="frpc_common_privilege_token" class="input_ss_table" autocomplete="new-password" autocorrect="off" autocapitalize="off" maxlength="256" value="" onBlur="switchType(this, false);" onFocus="switchType(this, true);" placeholder="必填项" />
+                                            </td>
+                                        </tr>
+                                        
+                                        <tr>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(21)">TCP 多路复用</a></th>
+                                            <td>
+                                                <select id="frpc_common_tcp_mux" name="frpc_common_tcp_mux" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
+                                                    <option value="true">开启（默认）</option>
+                                                    <option value="false">关闭</option>
+                                                </select>
                                             </td>
                                         </tr>
 
@@ -870,66 +906,54 @@ function openssHint(itemNum) {
                                             <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(20)">底层通信协议</a></th>
                                             <td>
                                                 <select id="frpc_common_protocol" name="frpc_common_protocol" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
-                                                    <option value="tcp">tcp</option>
+                                                    <option value="tcp">tcp（默认）</option>
+                                                    <option value="websocket">websocket</option>
                                                     <option value="kcp">kcp</option>
+                                                    <option value="quic">quic</option>
                                                 </select>
                                             </td>
                                         </tr>
 
                                         <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(21)">TCP 多路复用</a></th>
-                                            <td>
-                                                <select id="frpc_common_tcp_mux" name="frpc_common_tcp_mux" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
-                                                    <option value="true">开启</option>
-                                                    <option value="false">关闭</option>
-                                                </select>
-                                            </td>
-                                        </tr>
-
-                                        <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(22)">连接设置</a></th>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(22)">首次连接失败后</a></th>
                                             <td>
                                                 <select id="frpc_common_login_fail_exit" name="frpc_common_login_fail_exit" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
-                                                    <option value="true">失败后退出程序</option>
-                                                    <option value="false">失败后重复连接</option>
+                                                    <option value="true">退出程序（默认）</option>
+                                                    <option value="false">重复连接（建议）</option>
                                                 </select>
                                             </td>
                                         </tr>
-
-                                        <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(3)">Token</a></th>
-                                            <td>
-                                                <input type="password" name="frpc_common_privilege_token" id="frpc_common_privilege_token" class="input_ss_table" autocomplete="new-password" autocorrect="off" autocapitalize="off" maxlength="256" value="" onBlur="switchType(this, false);" onFocus="switchType(this, true);"/>
-                                            </td>
-                                        </tr>
-
-                                        <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(4)">HTTP穿透服务端口</a></th>
-                                            <td>
-                                                <input type="text" class="input_ss_table" id="frpc_common_vhost_http_port" name="frpc_common_vhost_http_port" maxlength="6" value="" />
-                                            </td>
-                                        </tr>
-
-                                        <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(5)">HTTPS穿透服务端口</a></th>
-                                            <td>
-                                                <input type="text" class="input_ss_table" id="frpc_common_vhost_https_port" name="frpc_common_vhost_https_port" maxlength="6" value="" />
-                                            </td>
-                                        </tr>
-
+                                        
                                         <tr>
                                             <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(19)">Frpc用户名称</a></th>
                                             <td>
-                                                <input type="text" class="input_ss_table" id="frpc_common_user" name="frpc_common_user" maxlength="50" value="" />
+                                                <input type="text" class="input_ss_table" id="frpc_common_user" name="frpc_common_user" maxlength="30" value="" placeholder="留空，即不配置" />
+                                            </td>
+                                        </tr>
+                                        
+                                        <tr>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(24)">心跳间隔时间</a></th>
+                                            <td>
+                                        <input type="text" oninput="this.value=this.value.replace(/[^\d-]/g, '')" class="input_ss_table" id="frpc_common_heartbeat_interval" name="frpc_common_heartbeat_interval" maxlength="4" value="" placeholder="留空默认30；负数关闭"/>
                                             </td>
                                         </tr>
 
                                         <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(6)">日志记录</a></th>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(25)">启用全局TLS加密</a></th>
+                                            <td>
+                                                <select id="frpc_common_tls_enable" name="frpc_common_tls_enable" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
+                                                    <option value="">（不配置，默认关闭）</option>
+                                                    <option value="true">开启</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(6)">日志记录文件</a></th>
                                             <td>
                                                 <select id="frpc_common_log_file" name="frpc_common_log_file" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
-                                                    <option value="/dev/null">关闭</option>
-                                                    <option value="/tmp/frpc.log">开启</option>
+                                                    <option value="">（不配置）</option>
+                                                    <option value="/tmp/frpc.log">开启（/tmp/frpc.log）</option>
                                                 </select>
                                             </td>
                                         </tr>
@@ -938,26 +962,33 @@ function openssHint(itemNum) {
                                             <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(7)">日志等级</a></th>
                                             <td>
                                                 <select id="frpc_common_log_level" name="frpc_common_log_level" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
-                                                    <option value="info">info</option>
-                                                    <option value="warn">warn</option>
-                                                    <option value="error">error</option>
-                                                    <option value="debug">debug</option>
+                                                    <option value="">（不配置，默认‘信息’）</option>
+                                                    <option value="error">错误</option>
+                                                    <option value="warn">警告</option>
+                                                    <option value="info">信息</option>
+                                                    <option value="debug">调试</option>
+                                                    <option value="trace">追踪</option>
                                                 </select>
                                             </td>
                                         </tr>
 
                                         <tr>
-                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(8)">日志记录天数</a></th>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(8)">日志记录保留天数</a></th>
                                             <td>
-                                                <select id="frpc_common_log_max_days" name="frpc_common_log_max_days" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
-                                                    <option value="1">1</option>
-                                                    <option value="2">2</option>
-                                                    <option value="3" selected="selected">3</option>
-                                                    <option value="4">4</option>
-                                                    <option value="5">6</option>
-                                                    <option value="6">6</option>
-                                                    <option value="7">7</option>
-                                                </select>
+                                                <input type="text" oninput="this.value=this.value.replace(/[^\d-]/g, '')" class="input_ss_table" id="frpc_common_log_max_days" name="frpc_common_log_max_days" maxlength="3" value="" placeholder="留空，即默认3"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(5)">服务端HTTP端口</a></th>
+                                            <td>
+                                                <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" class="input_ss_table" id="frpc_common_vhost_http_port" name="frpc_common_vhost_http_port" maxlength="5" value="" placeholder="留空，即未配置" />
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(5)">服务端HTTPS端口</a></th>
+                                            <td>
+                                                <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" class="input_ss_table" id="frpc_common_vhost_https_port" name="frpc_common_vhost_https_port" maxlength="5" value="" placeholder="留空，即未配置" />
                                             </td>
                                         </tr>
                                     </table>
@@ -970,8 +1001,8 @@ function openssHint(itemNum) {
 
                                           <tr>
                                             <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(9)">协议类型</a></th>
-                                          <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(10)">代理名称</a></th>
-                                          <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(11)">域名配置/SK</a></th>
+                                          <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(10)">代理名称(获取访客ini)</a></th>
+                                          <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(11)">域名/SK码</a></th>
                                           <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(12)">内网主机地址</a></th>
                                           <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(13)">内网主机端口</a></th>
                                           <th><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(14)">远程主机端口</a></th>
@@ -1002,24 +1033,24 @@ function openssHint(itemNum) {
                                             <input type="text" id="subdomain_node" name="subdomain_node" class="input_12_table" maxlength="250" value="none" placeholder="" disabled/>
                                         </td>
                                         <td>
-                                            <input type="text" id="localhost_node" name="localhost_node" class="input_12_table" maxlength="20" placeholder=""/>
+                                            <input type="text" id="localhost_node" name="localhost_node" class="input_12_table" maxlength="40" placeholder=""/>
                                         </td>
                                         <td>
-                                            <input type="text" id="localport_node" name="localport_node" class="input_6_table" maxlength="6" placeholder=""/>
+                                            <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" id="localport_node" name="localport_node" class="input_6_table" maxlength="5" placeholder=""/>
                                         </td>
                                         <td>
-                                            <input type="text" id="remoteport_node" name="remoteport_node" class="input_6_table" maxlength="6" placeholder=""/>
+                                            <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" id="remoteport_node" name="remoteport_node" class="input_6_table" maxlength="5" placeholder=""/>
                                         </td>
                                         <td>
                                             <select id="encryption_node" name="encryption_node" style="width:50px;margin:0px 0px 0px 2px;" class="input_option" >
+                                                <option value="(default)">默认</option>
                                                 <option value="true">是</option>
-                                                <option value="false">否</option>
                                             </select>
                                         </td>
                                         <td>
                                             <select id="gzip_node" name="gzip_node" style="width:50px;margin:0px 0px 0px 2px;" class="input_option" >
+                                                <option value="(default)">默认</option>
                                                 <option value="true">是</option>
-                                                <option value="false">否</option>
                                             </select>
                                         </td>
                                         <td width="7%">
@@ -1052,17 +1083,16 @@ function openssHint(itemNum) {
                                             </tr>
                                     </table>
                                     </div>
+                                    <div class="apply_gen">
+                                        <span><input class="button_gen" id="cmdBtn" onclick="save()" type="button" value="提交"/></span>
+                                    </div>
                                     <div style="margin:30px 0 10px 5px;" class="splitLine"></div>
                                     <div class="formbottomdesc" id="cmdDesc">
                                         <i>* 注意事项：</i><br>
-                                        <i>1. 请使用虚拟内存！请使用虚拟内存！请使用虚拟内存！重要的事说三遍</i><br>
-                                        <i>2. DDNS显示设置功能与系统自带的DDNS设置冲突，frp的DDNS显示设置会覆盖系统自带的DDNS设置！</i><br>
-                                        <i>3. 上面所有内容都为必填项，请认真填写，不然无法穿透。</i><br>
-                                        <i>4. 每一个文字都可以点击查看相应的帮助信息。</i><br>
-                                        <i>5. 穿透设置中添加删除为本地实时生效，请谨慎操作，修改后请提交以便服务器端生效。</i><br>
-                                    </div>
-                                    <div class="apply_gen">
-                                        <span><input class="button_gen_long" id="cmdBtn" onclick="save()" type="button" value="提交"/></span>
+                                        1、Frp的DDNS显示设置功能可能与系统自带的DDNS设置冲突，会覆盖系统自带的DDNS设置！<br>
+                                        2、“简单设置”模式适合常规快速配置；熟练者可使用“自定义设置”模式，更灵活。<br>
+                                        3、<i>点击参数设置项目的文字，可查看帮助信息</i>。<br>
+                                        4、穿透设置中<i>添加/删除</i>为本地实时生效，请谨慎操作，修改后请<i>提交</i>以便服务器端生效。<br>
                                     </div>
                                 </td>
                             </tr>
@@ -1070,10 +1100,10 @@ function openssHint(itemNum) {
                                     <!-- this is the popup area for user rules -->
                                     <div id="frpc_settings"  class="contentM_qis" style="box-shadow: 3px 3px 10px #000;margin-top: 70px;">
                                         <div class="user_title">Frpc 配置文件&nbsp;&nbsp;&nbsp;&nbsp;<a href="javascript:void(0)" onclick="close_conf('frpc_settings');" value="关闭"><span class="close"></span></a></div>
-                                        <div style="margin-left:15px"><i>1&nbsp;&nbsp;文本框内的内容保存在【/tmp/upload/.frpc.ini】。</i></div>
-                                        <div style="margin-left:15px"><i>2&nbsp;&nbsp;请自行保存到本地，并根据实际情况进行修改，如有疑问请到frp官网求助。</i></div>
+                                        <div style="margin-left:15px"><i>1、文本框内的内容保存在【/tmp/upload/.frpc.ini】。</i></div>
+                                        <div style="margin-left:15px"><i>2、请自行保存到本地，并根据实际情况进行修改，如有疑问请到frp官网求助。</i></div>
                                         <div id="user_tr" style="margin: 10px 10px 10px 10px;width:98%;text-align:center;">
-                                            <textarea cols="50" rows="20" wrap="off" id="frpctxt" style="width:97%;padding-left:10px;padding-right:10px;border:1px solid #222;font-family:'Courier New', Courier, mono; font-size:11px;background:#475A5F;color:#FFFFFF;outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled="disabled"></textarea>
+                                            <textarea cols="50" rows="20" wrap="off" id="frpctxt" style="width:97%;padding-left:10px;padding-right:10px;border:1px solid #222;font-family:'Courier New', Courier, mono; font-size:11px;background:#475A5F;color:#FFFFFF;outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                                         </div>
                                         <div style="margin-top:5px;padding-bottom:10px;width:100%;text-align:center;">
                                             <input id="edit_node1" class="button_gen" type="button" onclick="close_conf('frpc_settings');" value="返回主界面">
@@ -1081,13 +1111,24 @@ function openssHint(itemNum) {
                                     </div>
                                     <div id="stcp_settings"  class="contentM_qis" style="box-shadow: 3px 3px 10px #000;margin-top: 70px;">
                                         <div class="user_title">Frpc stcp 配置文件参考&nbsp;&nbsp;&nbsp;&nbsp;<a href="javascript:void(0)" onclick="close_conf('stcp_settings');" value="关闭"><span class="close"></span></a></div>
-                                        <div style="margin-left:15px"><i>1&nbsp;&nbsp;文本框内的内容保存在【/tmp/upload/.frpc_stcp.ini】。</i></div>
-                                        <div style="margin-left:15px"><i>2&nbsp;&nbsp;请自行保存到本地，并根据实际情况进行修改，如有疑问请到frp官网求助。</i></div>
+                                        <div style="margin-left:15px"><i>1、文本框内的内容保存在【/tmp/upload/.frpc_stcp.ini】。</i></div>
+                                        <div style="margin-left:15px"><i>2、请自行保存到本地，并根据实际情况进行修改（如：代理名称、本地端口等不要冲突），如有疑问请到frp官网求助。</i></div>
                                         <div id="user_tr" style="margin: 10px 10px 10px 10px;width:98%;text-align:center;">
-                                            <textarea cols="50" rows="20" wrap="off" id="usertxt" style="width:97%;padding-left:10px;padding-right:10px;border:1px solid #222;font-family:'Courier New', Courier, mono; font-size:11px;background:#475A5F;color:#FFFFFF;outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled="disabled"></textarea>
+                                            <textarea cols="50" rows="20" wrap="off" id="usertxt" style="width:97%;padding-left:10px;padding-right:10px;border:1px solid #222;font-family:'Courier New', Courier, mono; font-size:11px;background:#475A5F;color:#FFFFFF;outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                                         </div>
                                         <div style="margin-top:5px;padding-bottom:10px;width:100%;text-align:center;">
                                             <input id="edit_node2" class="button_gen" type="button" onclick="close_conf('stcp_settings');" value="返回主界面">
+                                        </div>
+                                    </div>
+                                    <div id="frpc_log"  class="contentM_qis" style="box-shadow: 3px 3px 10px #000;margin-top: 70px;">
+                                        <div class="user_title">Frpc 日志文件&nbsp;&nbsp;&nbsp;&nbsp;<a href="javascript:void(0)" onclick="close_conf('frpc_log');" value="关闭"><span class="close"></span></a></div>
+                                        <div style="margin-left:15px"><i>1、文本不会自动刷新，只限当天的运行日志（需开启日志文件功能），读取日志的链接[/tmp/upload/frpc_lnk.log]。</i></div>
+                                        <div style="margin-left:15px"><i>2、若使用“自定义设置”模式，请确保【log_file】参数设置满足以下条件：<br>&nbsp;&nbsp;&nbsp;①&nbsp;关键字“log_file” 只出现在某一行，不要出现在多行；<br>&nbsp;&nbsp;&nbsp;②&nbsp;使用已存在的、有读写权限的目录，填写绝对路径；<br>&nbsp;&nbsp;&nbsp;③&nbsp;请勿在参数的“行尾”填写其它字符或作注释，否则将出现混乱。<br>&nbsp;&nbsp;&nbsp;另提示：若要关闭日志文件功能，可以在“行首”用 # 符号注释，或者删除整行。</i></div>
+                                        <div id="user_tr" style="margin: 10px 10px 10px 10px;width:98%;text-align:center;">
+                                            <textarea cols="50" rows="20" wrap="off" id="logtxt" style="width:97%;padding-left:10px;padding-right:10px;border:1px solid #222;font-family:'Courier New', Courier, mono; font-size:11px;background:#475A5F;color:#FFFFFF;outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                                        </div>
+                                        <div style="margin-top:5px;padding-bottom:10px;width:100%;text-align:center;">
+                                            <input id="edit_node3" class="button_gen" type="button" onclick="close_conf('frpc_log');" value="返回主界面">
                                         </div>
                                     </div>
                                     <!-- end of the popouparea -->

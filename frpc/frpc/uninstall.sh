@@ -11,3 +11,8 @@ rm -rf /jffs/softcenter/res/frpc_stcp.html
 rm -rf /jffs/softcenter/scripts/frpc*.sh
 rm -rf /jffs/softcenter/webs/Module_frpc.asp
 rm -f /jffs/softcenter/scripts/uninstall_frpc.sh
+values=$(dbus list frpc | cut -d "=" -f 1)
+for value in $values
+do
+	dbus remove $value
+done
