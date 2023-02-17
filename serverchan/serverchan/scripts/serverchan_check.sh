@@ -160,7 +160,7 @@ if [[ "${serverchan_info_temp}" == "1" ]]; then
 		interface_5_temperature=0
 		router_cpu_temperature=0
 	elif [ "$ishnd" == "1" ];then
-		pu_temperature_origin=`cat /sys/class/thermal/thermal_zone0/temp`
+		cpu_temperature_origin=`cat /sys/class/thermal/thermal_zone0/temp`
 		router_cpu_temperature=`awk 'BEGIN{printf "%.1f\n",('$cpu_temperature_origin'/'1000')}'`
 		interface_2_temperature=`wl -i ${interface_2} phy_tempsense | awk '{print $1}'`
 		interface_5_temperature=`wl -i ${interface_5} phy_tempsense | awk '{print $1}'`
