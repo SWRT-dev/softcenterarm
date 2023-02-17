@@ -32,7 +32,7 @@ ln -sf /jffs/softcenter/scripts/softether.sh /jffs/softcenter/init.d/N98SoftEthe
 # 离线安装用
 dbus set softether_version="$(cat $DIR/version)"
 dbus set softcenter_module_softether_version="$(cat $DIR/version)"
-dbus set softcenter_module_softether_description="VPN全家桶, ver 4.30 build 9700"
+dbus set softcenter_module_softether_description="VPN全家桶"
 dbus set softcenter_module_softether_install="1"
 dbus set softcenter_module_softether_name="softether"
 dbus set softcenter_module_softether_title="SoftEther_VPN_Server"

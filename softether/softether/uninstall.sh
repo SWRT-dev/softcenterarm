@@ -11,6 +11,7 @@ rm -f /jffs/softcenter/res/icon-softether.png
 rm -fr /jffs/softcenter/scripts/softether.sh
 rm -fr /jffs/softcenter/bin/vpnserver
 rm -fr /jffs/softcenter/bin/hamcore.se2
+rm -fr /jffs/softcenter/scripts/softether_status.sh
 values=`dbus list softether | cut -d "=" -f 1`
 
 for value in $values
