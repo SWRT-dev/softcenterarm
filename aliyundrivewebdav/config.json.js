@@ -1,9 +1,9 @@
 {
-"version":"1.8.0",
-"md5":"e8849a71da28380cc756152cf157cb94",
+"version":"1.8.1",
+"md5":"c4cc74927dd874f5ec016025ec6a519d",
 "arch":"arm",
 "home_url":"Module_aliyundrivewebdav.asp",
 "title":"阿里云盘WebDAV",
 "description":"阿里云盘 WebDAV 服务器",
-"build_date":"2022-07-19_20:56:45"
+"build_date":"2023-02-18_15:46:56"
 }
