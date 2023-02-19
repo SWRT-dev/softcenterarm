@@ -1,105 +1,295 @@
 ﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta HTTP-EQUIV="Pragma" CONTENT="no-cache"/>
-<meta HTTP-EQUIV="Expires" CONTENT="-1"/>
-<link rel="shortcut icon" href="images/favicon.png"/>
-<link rel="icon" href="images/favicon.png"/>
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<link rel="shortcut icon" href="/res/icon-adbyby.png"/>
+<link rel="icon" href="/res/icon-adbyby.png"/>
 <title>软件中心 - adbyby</title>
 <link rel="stylesheet" type="text/css" href="index_style.css"/>
 <link rel="stylesheet" type="text/css" href="form_style.css"/>
 <link rel="stylesheet" type="text/css" href="usp_style.css"/>
-<link rel="stylesheet" type="text/css" href="ParentalControl.css">
-<link rel="stylesheet" type="text/css" href="css/icon.css">
 <link rel="stylesheet" type="text/css" href="css/element.css">
+<link rel="stylesheet" type="text/css" href="/device-map/device-map.css">
+<link rel="stylesheet" type="text/css" href="/res/softcenter.css">
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
-<script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
-<script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
-<script type="text/javascript" src="/dbconf?p=adbyby_&v=<% uptime(); %>"></script>
+<script type="text/javascript" src="/client_function.js"></script>
+<script type="text/javascript" src="/help.js"></script>
+<script type="text/javascript" src="/res/softcenter.js"></script>
+<style>
+a:focus {
+	outline: none;
+}
+.SimpleNote {
+	padding:5px 5px;
+}
+i {
+    color: #FC0;
+    font-style: normal;
+} 
+.loadingBarBlock{
+	width:740px;
+}
+.popup_bar_bg_ks{
+	position:fixed;
+	margin: auto;
+	top: 0;
+	left: 0;
+	width:100%;
+	height:100%;
+	z-index:99;
+	/*background-color: #444F53;*/
+	filter:alpha(opacity=90);  /*IE5、IE5.5、IE6、IE7*/
+	background-repeat: repeat;
+	visibility:hidden;
+	overflow:hidden;
+	/*background: url(/images/New_ui/login_bg.png);*/
+	background:rgba(68, 79, 83, 0.85) none repeat scroll 0 0 !important;
+	background-position: 0 0;
+	background-size: cover;
+	opacity: .94;
+}
+
+.FormTitle em {
+    color: #00ffe4;
+    font-style: normal;
+    /*font-weight:bold;*/
+}
+.FormTable th {
+	width: 30%;
+}
+.formfonttitle {
+	font-family: Roboto-Light, "Microsoft JhengHei";
+	font-size: 18px;
+	margin-left: 5px;
+}
+.FormTitle, .FormTable, .FormTable th, .FormTable td, .FormTable thead td, .FormTable_table, .FormTable_table th, .FormTable_table td, .FormTable_table thead td {
+	font-size: 14px;
+	font-family: Roboto-Light, "Microsoft JhengHei";
+}
+</style>
 <script>
-	var $j = jQuery.noConflict();
+var db_adbyby = {};
+var _responseLen;
+var noChange = 0;
+var x = 6;
+var params_check = ['adbyby_enable'];
+var params_input = ['adbyby_mode', 'adbyby_block_cnshort'];
 function init() {
 	show_menu(menu_hook);
-	buildswitch();
-	version_show();
-	var rrt = document.getElementById("switch");
-	if (document.form.adbyby_enable.value != "1") {
-        	rrt.checked = false;
-	} else {
-        	rrt.checked = true;
-	}
+	get_dbus_data();
+	get_status();
 }
 
-function done_validating() {
-	return true;
-}
-
-function buildswitch(){
-	$j("#switch").click(
-	function(){
-		if(document.getElementById('switch').checked){
-			document.form.adbyby_enable.value = 1;
-		}else{
-			document.form.adbyby_enable.value = 0;
-		}
+function hook_event(){
+	$("#log_content2").click(
+		function() {
+		x = -10;
 	});
 }
 
-function onSubmitCtrl() {
-	showLoading(3);
-	document.form.submit();
-}
-
-function reload_Soft_Center() {
-	location.href = "/Main_Soft_center.asp";
+function get_dbus_data(){
+	$.ajax({
+		type: "GET",
+		url: "/_api/adbyby_",
+		dataType: "json",
+		async: false,
+		success: function(data) {
+			db_adbyby = data.result[0];
+			conf2obj();
+		}
+	});
 }
 
 function conf2obj(){
-	$j.ajax({
-	type: "get",
-	url: "dbconf?p=adbyby_",
-	dataType: "script",
-	success: function(xhr) {
-	var p = "adbyby_";
-        var params = ["user_txt"];
-        for (var i = 0; i < params.length; i++) {
-			if (typeof db_adbyby_[p + params[i]] !== "undefined") {
-				$j("#adbyby_"+params[i]).val(db_adbyby_[p + params[i]]);
-			}
-        }
+	for (var i = 0; i < params_check.length; i++) {
+		if(db_adbyby[params_check[i]]){
+			E(params_check[i]).checked = db_adbyby[params_check[i]] != "0";
+		}
 	}
+	for (var i = 0; i < params_input.length; i++) {
+		if (db_adbyby[params_input[i]]) {
+			$("#" + params_input[i]).val(db_adbyby[params_input[i]]);
+		}
+	}
+	if (db_adbyby["adbyby_version"]){
+		E("adbyby_version").innerHTML = "当前版本 - v" + db_adbyby["adbyby_version"];
+	}
+}
+
+function get_status() {
+	var postData = {"id": parseInt(Math.random() * 100000000), "method": "adbyby_status.sh", "params": [], "fields": ""};
+	$.ajax({
+		type: "POST",
+		cache: false,
+		url: "/_api/",
+		data: JSON.stringify(postData),
+		dataType: "json",
+		success: function(response) {
+			E("adbyby_status").innerHTML = response.result;
+			setTimeout("get_status();", 10000);
+		},
+		error: function() {
+			setTimeout("get_status();", 5000);
+		}
 	});
 }
 
-function version_show(){
-	$j("#adbyby_version_status").html("<i>当前版本：" + db_adbyby_['adbyby_version']);
-
-	$j.ajax({
-        url: 'https://raw.githubusercontent.com/paldier/softcenterarm/master/adbyby/config.json.js',
-        type: 'GET',
-        success: function(res) {
-            var txt = $j(res.responseText).text();
-            if(typeof(txt) != "undefined" && txt.length > 0) {
-                //console.log(txt);
-                var obj = $j.parseJSON(txt.replace("'", "\""));
-		$j("#adbyby_version_status").html("<i>当前版本：" + obj.version);
-		if(obj.version != db_adbyby_["adbyby_version"]) {
-			$j("#adbyby_version_status").html("<i>有新版本：" + obj.version);
+function save() {
+	showabLoadingBar();
+	//input
+	for (var i = 0; i < params_input.length; i++) {
+		if (E(params_input[i]).value) {
+			db_adbyby[params_input[i]] = E(params_input[i]).value;
+		}else{
+			db_adbyby[params_input[i]] = "";
 		}
-            }
-        }
-    });
+	}
+	// checkbox
+	for (var i = 0; i < params_check.length; i++) {
+		db_adbyby[params_check[i]] = E(params_check[i]).checked ? '1' : '0';
+	}
+	//console.log(db_adbyby);
+	// post data
+	var uid = parseInt(Math.random() * 100000000);
+	var postData = {"id": uid, "method": "adbyby_config.sh", "params": ["restart"], "fields": db_adbyby };
+	$.ajax({
+		url: "/_api/",
+		cache: false,
+		type: "POST",
+		dataType: "json",
+		data: JSON.stringify(postData),
+		success: function(response) {
+			if (response.result == uid || parseInt(response.result) == uid){
+				get_realtime_log();
+			}
+		}
+	});
+}
+
+function get_realtime_log() {
+	$.ajax({
+		url: '/_temp/adbyby_run.log',
+		type: 'GET',
+		async: true,
+		cache:false,
+		dataType: 'text',
+		success: function(response) {
+			var retArea = E("log_content3");
+			if (response.search("XU6J03M6") != -1) {
+				retArea.value = response.replace("XU6J03M6", " ");
+				E("ok_button").style.display = "";
+				retArea.scrollTop = retArea.scrollHeight;
+				count_down_close();
+				return true;
+			}
+			if (_responseLen == response.length) {
+				noChange++;
+			} else {
+				noChange = 0;
+			}
+			if (noChange > 1000) {
+				return false;
+			} else {
+				setTimeout("get_realtime_log();", 100);
+			}
+			retArea.value = response.replace("XU6J03M6", " ");
+			retArea.scrollTop = retArea.scrollHeight;
+			_responseLen = response.length;
+		},
+		error: function() {
+			setTimeout("get_realtime_log();", 500);
+		}
+	});
+}
+
+function showabLoadingBar(seconds){
+	if(window.scrollTo)
+		window.scrollTo(0,0);
+	disableCheckChangedStatus();
+	
+	htmlbodyforIE = document.getElementsByTagName("html");  //this both for IE&FF, use "html" but not "body" because <!DOCTYPE html PUBLIC.......>
+	htmlbodyforIE[0].style.overflow = "hidden";	  //hidden the Y-scrollbar for preventing from user scroll it.
+	
+	winW_H();
+	var blockmarginTop;
+	var blockmarginLeft;
+	if (window.innerWidth)
+		winWidth = window.innerWidth;
+	else if ((document.body) && (document.body.clientWidth))
+		winWidth = document.body.clientWidth;
+	
+	if (window.innerHeight)
+		winHeight = window.innerHeight;
+	else if ((document.body) && (document.body.clientHeight))
+		winHeight = document.body.clientHeight;
+	if (document.documentElement  && document.documentElement.clientHeight && document.documentElement.clientWidth){
+		winHeight = document.documentElement.clientHeight;
+		winWidth = document.documentElement.clientWidth;
+	}
+	if(winWidth >1050){
+	
+		winPadding = (winWidth-1050)/2;	
+		winWidth = 1105;
+		blockmarginLeft= (winWidth*0.3)+winPadding-150;
+	}
+	else if(winWidth <=1050){
+		blockmarginLeft= (winWidth)*0.3+document.body.scrollLeft-160;
+	}
+	
+	if(winHeight >660)
+		winHeight = 660;
+	
+	blockmarginTop= winHeight*0.3-140		
+	E("loadingBarBlock").style.marginTop = blockmarginTop+"px";
+	E("loadingBarBlock").style.marginLeft = blockmarginLeft+"px";
+	E("loadingBarBlock").style.width = 770+"px";
+	E("LoadingBar").style.width = winW+"px";
+	E("LoadingBar").style.height = winH+"px";
+	loadingSeconds = seconds;
+	progress = 100/loadingSeconds;
+	y = 0;
+	LoadingabProgress(seconds);
+}
+function LoadingabProgress(seconds){
+	E("LoadingBar").style.visibility = "visible";
+	if (E("adbyby_enable").checked == false){
+		E("loading_block3").innerHTML = "adbyby关闭中 ..."
+		$("#loading_block2").html("<li><font color='#ffcc00'><a href='https://github.com/SWRT-dev/softcenter' target='_blank'></font>adbyby工作有问题？请来<font color='#ffcc00'>https://github.com/SWRT-dev/softcenter</font>反应问题...</font></li>");
+	} else {
+		E("loading_block3").innerHTML = "adbyby启动中 ..."
+		$("#loading_block2").html("<font color='#ffcc00'>----------------------------------------------------------------------------------------------------------------------------------");
+	}
+}
+
+function hideadLoadingBar(){
+	x = -1;
+	E("LoadingBar").style.visibility = "hidden";
+	refreshpage();
+}
+
+function count_down_close() {
+	if (x == "0") {
+		hideadLoadingBar();
+	}
+	if (x < 0) {
+		E("ok_button1").value = "手动关闭"
+		return false;
+	}
+	E("ok_button1").value = "自动关闭（" + x + "）"
+		--x;
+	setTimeout("count_down_close();", 1000);
 }
 
 function menu_hook(title, tab) {
-	tabtitle[tabtitle.length -1] = new Array("", "软件中心", "离线安装", "adbyby");
+	tabtitle[tabtitle.length -1] = new Array("", "软件中心", "离线安装", "广告屏蔽大师 Plus");
 	tablink[tablink.length -1] = new Array("", "Main_Soft_center.asp", "Main_Soft_setting.asp", "Module_adbyby.asp");
 }
 </script>
@@ -107,19 +297,22 @@ function menu_hook(title, tab) {
 <body onload="init();">
 	<div id="TopBanner"></div>
 	<div id="Loading" class="popup_bg"></div>
-	<iframe name="hidden_frame" id="hidden_frame" src="" width="0" height="0" frameborder="0"></iframe>
-	<form method="POST" name="form" action="/applydb.cgi?p=adbyby_" target="hidden_frame">
-	<input type="hidden" name="current_page" value="Module_adbyby_.asp"/>
-	<input type="hidden" name="next_page" value="Module_adbyby_.asp"/>
-	<input type="hidden" name="group_id" value=""/>
-	<input type="hidden" name="modified" value="0"/>
-	<input type="hidden" name="action_mode" value=" Refresh "/>
-	<input type="hidden" name="action_script" value="adbyby_config.sh"/>
-	<input type="hidden" name="action_wait" value=""/>
-	<input type="hidden" name="first_time" value=""/>
-	<input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>"/>
-	<input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>"/>
-	<input type="hidden" id="adbyby_enable" name="adbyby_enable" value='<% dbus_get_def("adbyby_enable", "0"); %>'/>
+	<div id="LoadingBar" class="popup_bar_bg">
+		<table cellpadding="5" cellspacing="0" id="loadingBarBlock" class="loadingBarBlock" align="center">
+			<tr>
+				<td height="100">
+					<div id="loading_block3" style="margin:10px auto;margin-left:10px;width:85%; font-size:12pt;"></div>
+					<div id="loading_block2" style="margin:10px auto;width:95%;"></div>
+					<div id="log_content2" style="margin-left:15px;margin-right:15px;margin-top:10px;overflow:hidden">
+						<textarea cols="63" rows="21" wrap="on" readonly="readonly" id="log_content3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="border:1px solid #000;width:99%; font-family:'Courier New', Courier, mono; font-size:11px;background:#000;color:#FFFFFF;"></textarea>
+					</div>
+					<div id="ok_button" class="apply_gen" style="background: #000;display: none;">
+						<input id="ok_button1" class="button_gen" type="button" onclick="hideadLoadingBar()" value="确定">
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
 	<table class="content" align="center" cellpadding="0" cellspacing="0">
 		<tr>
 			<td width="17">&nbsp;</td>
@@ -136,37 +329,68 @@ function menu_hook(title, tab) {
 								<tr>
 									<td bgcolor="#4D595D" colspan="3" valign="top">
 										<div>&nbsp;</div>
-										<div style="float:left;" class="formfonttitle">adbyby 广告屏蔽大师~</div>
+										<div style="float:left;" class="formfonttitle" style="padding-top: 12px">广告屏蔽大师 Plus</div>
 										<div style="float:right; width:15px; height:25px;margin-top:10px"><img id="return_btn" onclick="reload_Soft_Center();" align="right" style="cursor:pointer;position:absolute;margin-left:-30px;margin-top:-25px;" title="返回软件中心" src="/images/backprev.png" onMouseOver="this.src='/images/backprevclick.png'" onMouseOut="this.src='/images/backprev.png'"></img></div>
-										<div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
-										<div class="formfontdesc" style="padding-top:5px;margin-top:0px;float: left;" id="cmdDesc"></div>
-										<div id="adbyby_version_show" style="padding-top:5px;margin-left:1px;margin-top:0px;float: left;"><i>当前版本：<% dbus_get_def("adbyby_version", "未知"); %></i></div>							
-										<div class="formfontdesc" id="cmdDesc"></div>
-										<table style="margin:10px 0px 0px 0px;" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable" id="routing_table">
-											<thead>
-											<tr>
-												<td colspan="2">开关设置</td>
-											</tr>
-											</thead>
-											<tr id="switch_tr">
-												<th>
-													<label>开启adbyby</label>
-												</th>
-												<td colspan="2">
-													<div class="switch_field" style="display:table-cell">
-														<label for="switch">
-															<input id="switch" class="switch" type="checkbox" style="display: none;">
-															<div class="switch_container" >
-																<div class="switch_bar"></div>
-																<div class="switch_circle transition_style">
-																	<div></div>
+										<div style="margin:30px 0 10px 5px;" class="splitLine"></div>
+										<div style="margin-left:5px;" id="head_illustrate">
+											<li><em>adbyby</em>广告屏蔽大师 Plus 可以全面过滤各种横幅、弹窗、视频广告，同时阻止跟踪、隐私窃取及各种恶意网站</li>
+										</div>
+										<div id="adbyby_switch" style="margin:5px 0px 0px 0px;">
+											<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
+												<thead>
+												<tr>
+													<td colspan="2">adbyby - 开关/状态</td>
+												</tr>
+												</thead>
+												<tr id="switch_tr">
+													<th>
+														<label>开启adbyby</label>
+													</th>
+													<td colspan="2">
+														<div class="switch_field" style="display:table-cell">
+															<label for="adbyby_enable">
+																<input id="adbyby_enable" class="switch" type="checkbox" style="display: none;">
+																<div class="switch_container" >
+																	<div class="switch_bar"></div>
+																	<div class="switch_circle transition_style">
+																		<div></div>
+																	</div>
 																</div>
-															</div>
-														</label>
-													</div>
-													<div id="adbyby_install_show" style="padding-top:5px;margin-left:80px;margin-top:-30px;float: left;"></div>	
-												</td>
-											</tr>
+															</label>
+														</div>
+														<div style="display:table-cell;float: left;margin-left:270px;margin-top:-32px;position: absolute;padding: 5.5px 0px;">
+														</div>
+														<div id="adbyby_version" style="padding-top:5px;margin-right:50px;margin-top:-30px;float: right;"></div>	
+													</td>
+												</tr>
+				                                <tr id="adbyby_status_tr">
+				                                    <th>运行状态</th>
+				                                    <td><span id="adbyby_status">获取中...</span>
+				                                    </td>
+				                                </tr>
+				                                <tr>
+				                                    <th>过滤模式</th>
+				                                    <td>
+				                                        <select id="adbyby_mode" name="adbyby_mode" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
+				                                            <option value="0">全局模式</option>
+				                                            <option value="1">ipset模式</option>
+				                                            <!--option value="2">手动过滤模式</option-->
+				                                        </select>
+				                                    </td>
+				                                </tr>
+				                                <tr>
+				                                    <th>过滤短视频APP和网站</th>
+				                                    <td>
+				                                        <select id="adbyby_block_cnshort" name="adbyby_block_cnshort" style="width:165px;margin:0px 0px 0px 2px;" class="input_option" >
+				                                            <option value="0">不过滤</option>
+				                                            <option value="1">过滤</option>
+				                                        </select>
+				                                    </td>
+				                                </tr>
+											</table>
+										</div>
+										<table style="margin:10px 0px 0px 0px;" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable" id="routing_table">
+
 											<!--
 											<tr id="adbyby_status">
 												<th>
@@ -215,15 +439,9 @@ function menu_hook(title, tab) {
 											-->
                                     	</table>
 										<div class="apply_gen">
-											<button id="cmdBtn" class="button_gen" onclick="onSubmitCtrl()">提交</button>
+											<button id="cmdBtn" class="button_gen" onclick="save()">提交</button>
 										</div>
-										<div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
-										<div class="KoolshareBottom">
-											<br/>论坛技术支持： <a href="http://www.koolshare.cn" target="_blank"> <i><u>www.koolshare.cn</u></i> </a> <br/>
-											后台技术支持： <i>Xiaobao</i> <br/>
-											Shell, Web by： <i>Sadoneli</i><br/>
-										</div>
-
+										<div style="margin:30px 0 10px 5px;" class="splitLine"></div>
 									</td>
 								</tr>
 							</table>
