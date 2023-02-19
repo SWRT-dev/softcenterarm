@@ -149,7 +149,7 @@ load_nat(){
 	iptables -t nat -A adbyby -p tcp --dport 80 -j REDIRECT --to-ports 8118 2>/dev/null
 	iptables -t nat -I PREROUTING -p tcp --dport 80 -j adbyby 2>/dev/null
 	echo_date "启动adbyby看门狗"
-	sh /jffs/softcenter/adbyby/ad_mon.sh &
+	/jffs/softcenter/adbyby/ad_mon.sh &
 	echo_date "启动规则自动更新"
 	cru a adbyby_update "58 1 * * * /root/adbyby/adblock.sh 2>/dev/null"
 }

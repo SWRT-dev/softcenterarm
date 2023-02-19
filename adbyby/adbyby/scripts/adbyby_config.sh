@@ -2,12 +2,14 @@
 eval `dbus export adbyby`
 source /jffs/softcenter/scripts/base.sh
 
-case $ACTION in
+case $1 in
 start)
 	if [ "$adbyby_enable" == "1" ];then
 		/jffs/softcenter/adbyby/adbyby.sh start
 	fi
 	;;
+esac
+case $2 in
 *)
 	if [ "$adbyby_enable" == "1" ];then
 		/jffs/softcenter/adbyby/adbyby.sh restart > /tmp/upload/adbyby_run.log
