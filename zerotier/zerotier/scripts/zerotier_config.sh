@@ -4,7 +4,7 @@ eval `dbus export zerotier_`
 source /jffs/softcenter/scripts/base.sh
 alias echo_date='echo $(date +%Y年%m月%d日\ %X):'
 config_path="/jffs/softcenter/etc/zerotier-one"
-echo "" > /tmp/zerotier.log
+echo "" > /tmp/upload/zerotier.log
 start_instance() {
 	cfg="$1"
 	#echo $cfg
@@ -22,7 +22,7 @@ start_instance() {
 		args="$args -p$port"
 	fi
 	if [ -z "$secret" ]; then
-		echo_date "设备密匙为空,正在生成密匙,请稍后..." >> /tmp/zerotier.log
+		echo_date "设备密匙为空,正在生成密匙,请稍后..."
 		sf="/tmp/zt.$cfg.secret"
 		/jffs/softcenter/bin/zerotier-idtool generate "$sf" >/dev/null
 		[ $? -ne 0 ] && return 1
@@ -31,7 +31,7 @@ start_instance() {
 		dbus set zerotier_secret="$secret"
 	fi
 	if [ -n "$secret" ]; then
-		echo_date "找到密匙,正在写入文件,请稍后..." >> /tmp/zerotier.log
+		echo_date "找到密匙,正在写入文件,请稍后..."
 		echo "$secret" >$config_path/identity.secret
 		rm -f $config_path/identity.public
 	fi
@@ -40,7 +40,14 @@ start_instance() {
 
 	/jffs/softcenter/bin/zerotier-one -d $args $config_path
 
+	if [ -n "$zerotier_moonid" ];then
+		/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one  orbit $zerotier_moonid $zerotier_moonid
+		kill_z
+		/jffs/softcenter/bin/zerotier-one -d $args $config_path
+	fi
+
 	rules
+
 }
 
 add_join() {
@@ -53,7 +60,7 @@ rules() {
 		sleep 1
 	done
 	zt0=$(ifconfig | grep zt | awk '{print $1}')
-	echo_date "zt interface $zt0 is started!" >> /tmp/zerotier.log
+	echo_date "zt interface $zt0 is started!"
 	del_rules
 	#add to front of drop
 	iptables -I INPUT -i $zt0 -j ACCEPT
@@ -104,7 +111,7 @@ zero_route(){
 start_zero() {
 	if [ "$zerotier_enable" == "1" ];then
 		kill_z
-		echo_date "正在启动zerotier" >> /tmp/zerotier.log
+		echo_date "正在启动zerotier"
 		start_instance 'zerotier'
 	else
 		stop_zero
@@ -115,11 +122,15 @@ kill_z() {
 	killall -9 zerotier-one >/dev/null 2>&1 &
 }
 stop_zero() {
-	echo_date "关闭zerotier" >> /tmp/zerotier.log
+	echo_date "关闭zerotier"
 	del_rules
 	#zero_route "del"
 	kill_z
 	rm -rf $config_path
+}
+
+deorbit_moon(){
+	/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one deorbit $zerotier_moonid
 }
 
 case $1 in
@@ -136,7 +147,11 @@ stop)
 	stop_zero
 	;;
 restart)
-	stop_zero
-	start_zero
+	stop_zero >> /tmp/upload/zerotier.log
+	start_zero >> /tmp/upload/zerotier.log
+	echo XU6J03M6 >> /tmp/upload/zerotier.log
+	;;
+deorbit)
+	deorbit_moon
 	;;
 esac

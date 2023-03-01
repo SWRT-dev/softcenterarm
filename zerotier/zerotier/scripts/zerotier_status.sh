@@ -8,4 +8,4 @@ else
 	zerotier_log="zerotier is disabled"
 fi
 
-echo "$zerotier_log" > /tmp/zerotier_status.log
+http_response "$zerotier_log"
