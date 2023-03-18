@@ -3,84 +3,93 @@ source /jffs/softcenter/scripts/base.sh
 eval `dbus export ddnspod`
 alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】:'
 # ====================================函数定义====================================
-# 获得外网地址
-arIpAdress() {
-    local inter=$(curl -s whatismyip.akamai.com)
-    #local inter=$(nvram get wan0_realip_ip)
-    echo $inter
-}
 
-# 查询域名地址
-# 参数: 待查询域名
-arNslookup() {
-    local inter="http://119.29.29.29/d?dn="
-    wget --quiet --output-document=- $inter$1
+# 获得公网IP地址
+# 参数：IP协议类型
+arIPAddress() {
+    wget --quiet --output-document=- "v${1}.ipip.net"
 }
 
 # 读取接口数据
 # 参数: 接口类型 待提交数据
 arApiPost() {
+    local site recordLine
+    if [ $ddnspod_site -eq 1 ]; then
+        site="dnsapi.cn"
+        recordLine="%E9%BB%98%E8%AE%A4"
+    else
+        site="api.dnspod.com"
+        recordLine="default"
+    fi
     local agent="AnripDdns/5.07(mail@anrip.com)"
-    local inter="https://dnsapi.cn/${1:?'Info.Version'}"
-    local param="login_token=$ddnspod_config_id,$ddnspod_config_token&format=json&${2}"
-    wget --quiet --no-check-certificate --output-document=- --user-agent=$agent --post-data $param $inter
+    local inter="https://${site}/${1:?'Info.Version'}"
+    local param="login_token=$ddnspod_config_id,$ddnspod_config_token&format=json&${2}&record_line=${recordLine}"
+    wget --quiet --no-check-certificate --output-document=- --user-agent=$agent --post-data "$param" "$inter"
 }
 
-# 更新记录信息
-# 参数: 主域名 子域名
+# 更新域名记录信息
+# 参数: IP协议类型 主域名 子域名 记录ID 当前IP
 arDdnsUpdate() {
-    local domainID recordID recordRS recordCD myIP errMsg
-    # 获得域名ID
-    domainID=$(arApiPost "Domain.Info" "domain=${1}")
-    domainID=$(echo $domainID | sed 's/.*"id":"\([0-9]*\)".*/\1/')
-    # 获得记录ID
-    recordID=$(arApiPost "Record.List" "domain_id=${domainID}&sub_domain=${2}")
-    recordID=$(echo $recordID | sed 's/.*\[{"id":"\([0-9]*\)".*/\1/')
     # 更新记录IP
-    myIP=$($inter)
-    recordRS=$(arApiPost "Record.Ddns" "domain_id=${domainID}&record_id=${recordID}&sub_domain=${2}&value=${myIP}&record_line=默认")
+    arApiPost "Record.Modify" "record_type=${1}&domain=${2}&sub_domain=${3}&record_id=${4}&value=${5}"
+}
+
+# 获取域名记录列表
+# 参数: IP协议类型 主域名 子域名
+arDdnsList() {
+    # 获得记录列表
+    arApiPost "Record.List" "record_type=${1}&domain=${2}&sub_domain=${3}"
+}
+
+# 检查DNS
+# 参数: IP协议类型 主域名 子域名
+arDdnsCheck() {
+    local recordRS recordID recordIP recordCD currentIP errMsg
+    local recordType
+    if [ $1 -eq 6 ]; then
+        recordType="AAAA"
+    else
+        recordType="A"
+    fi
+
+    currentIP=$(arIPAddress $1)
+    recordRS=$(arDdnsList $recordType $2 $3)
     recordCD=$(echo $recordRS | sed 's/.*{"code":"\([0-9]*\)".*/\1/')
-    # 输出记录IP
     if [ "$recordCD" == "1" ]; then
-        echo $recordRS | sed 's/.*,"value":"\([0-9\.]*\)".*/\1/'
-        dbus set ddnspod_run_status="`echo_date` 更新成功，wan ip：${hostIP}"
+        recordID=$(echo $recordRS | sed 's/.*{"id":"\([0-9]*\)".*"type":"'${recordType}'".*/\1/')
+        recordIP=$(echo $recordRS | sed 's/.*{"id":"'${recordID}'".*"value":"\([a-z0-9:.]*\)".*/\1/')
+    else
+        errMsg=$(echo $recordRS | sed 's/.*,"message":"\([^"]*\)".*/\1/')
+        dbus set ddnspod_run_status_v${1}="WAN IPV${1}：${currentIP} 更新失败，原因：${errMsg}"
+        echo $errMsg
         return 1
     fi
-    # 输出错误信息
-    errMsg=$(echo $recordRS | sed 's/.*,"message":"\([^"]*\)".*/\1/')
-    dbus set ddnspod_run_status="失败，错误代码：$errMsg"
-    echo $errMsg
-}
 
-arDdnsCheck() {
-	postRS
-	hostIP=$(arIpAdress)
-	if [ $2 == "@" ];then
-		lastIP=$(arNslookup "${1}")
-		echo "Spetial subDomain: $2"
-	else
-		lastIP=$(arNslookup "${2}.${1}")
-	fi
-	echo "hostIP: ${hostIP}"
-	echo "lastIP: ${lastIP}"
-	if [ "$lastIP" != "$hostIP" ]; then
-		dbus set ddnspod_run_status="更新中。。。"
-		postRS=$(arDdnsUpdate $1 $2)
-		echo "postRS: ${postRS}"
-		if [ $? -ne 1 ]; then
-			dbus set ddnspod_run_status="wan ip：${hostIP} 更新失败，原因：${postRS}"
-		    return 1
-		fi
-	else
-		dbus set ddnspod_run_status="`echo_date` wan ip：${hostIP} 未改变，无需更新"
-	fi
-	return 0
+    if [ "$currentIP" != "$recordIP" ]; then
+        dbus set ddnspod_run_status_v${1}="更新中。。。"
+
+        # 更新记录IP
+        recordRS=$(arDdnsUpdate $recordType $2 $3 $recordID $currentIP)
+        recordCD=$(echo $recordRS | sed 's/.*{"code":"\([0-9]*\)".*/\1/')
+
+        if [ "$recordCD" == "1" ]; then
+            dbus set ddnspod_run_status_v${1}=`echo_date` "更新成功，WAN IPV${1}：${currentIP}"
+        else
+            errMsg=$(echo $recordRS | sed 's/.*,"message":"\([^"]*\)".*/\1/')
+            dbus set ddnspod_run_status_v${1}="WAN IPV${1}：${currentIP} 更新失败，原因：${errMsg}"
+            echo $errMsg
+            return 1
+        fi
+    else
+        dbus set ddnspod_run_status_v${1}="`echo_date` 无需更新，WAN IPV${1}：${currentIP}"
+    fi
+    return 0
 }
 
 parseDomain() {
-	mainDomain=${ddnspod_config_domain#*.}
-	local tmp=${ddnspod_config_domain%$mainDomain}
-	subDomain=${tmp%.}
+    mainDomain=`echo ${ddnspod_config_domain} | awk -F. '{print $(NF-1)"."$NF}'`
+    local tmp=${ddnspod_config_domain%$mainDomain}
+    subDomain=${tmp%.}
 }
 
 add_ddnspod_cru(){
@@ -92,15 +101,8 @@ stop_ddnspod(){
 	sed -i '/ddnspod/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
 }
 
-add_auto_start(){
-	if [ "$(nvram get productid)" = "BLUECAVE" ];then
-		[ ! -f "/jffs/softcenter/init.d/M99ddnspod.sh" ] && cp -r /jffs/softcenter/scripts/ddnspod_config.sh /jffs/softcenter/init.d/M99ddnspod.sh
-	else
-		[ ! -L "/jffs/softcenter/init.d/S99ddnspod.sh" ] && ln -sf /jffs/softcenter/scripts/ddnspod_config.sh /jffs/softcenter/init.d/S99ddnspod.sh
-	fi
-}
 # ====================================used by init or cru====================================
-case $ACTION in
+case $1 in
 start)
 	#此处为开机自启动设计
 	if [ "$ddnspod_enable" == "1" ];then
@@ -108,6 +110,9 @@ start)
 		add_ddnspod_cru
 		parseDomain
 		arDdnsCheck $mainDomain $subDomain
+		if [ "$ddnspod_ipv6_enable" == "1" ];then
+			arDdnsCheck 6 $mainDomain $subDomain
+		fi
 	else
 		logger "[软件中心]: ddnspod未设置开机启动，跳过！"
 	fi
@@ -120,16 +125,28 @@ update)
 	#此处为定时脚本设计
 	parseDomain
 	arDdnsCheck $mainDomain $subDomain
+		if [ "$ddnspod_ipv6_enable" == "1" ];then
+			arDdnsCheck 6 $mainDomain $subDomain
+		fi
 	;;
-restart)
+esac
+# ====================================submit by web====================================
+case $2 in
+1)
 	#此处为web提交动设计
 	if [ "$ddnspod_enable" == "1" ];then
 		add_auto_start
 		parseDomain
 		add_ddnspod_cru
 		arDdnsCheck $mainDomain $subDomain
+		if [ "$ddnspod_ipv6_enable" == "1" ];then
+			arDdnsCheck 6 $mainDomain $subDomain
+		fi
+		http_response "$1"
 	else
 		stop_ddnspod
+		http_response "$1"
 	fi
 	;;
 esac
+
