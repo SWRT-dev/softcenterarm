@@ -109,7 +109,7 @@ start)
 		logger "[软件中心]: 启动ddnspod！"
 		add_ddnspod_cru
 		parseDomain
-		arDdnsCheck $mainDomain $subDomain
+		arDdnsCheck 4 $mainDomain $subDomain
 		if [ "$ddnspod_ipv6_enable" == "1" ];then
 			arDdnsCheck 6 $mainDomain $subDomain
 		fi
@@ -124,7 +124,7 @@ stop | kill )
 update)
 	#此处为定时脚本设计
 	parseDomain
-	arDdnsCheck $mainDomain $subDomain
+	arDdnsCheck 4 $mainDomain $subDomain
 		if [ "$ddnspod_ipv6_enable" == "1" ];then
 			arDdnsCheck 6 $mainDomain $subDomain
 		fi
@@ -138,7 +138,7 @@ case $2 in
 		add_auto_start
 		parseDomain
 		add_ddnspod_cru
-		arDdnsCheck $mainDomain $subDomain
+		arDdnsCheck 4 $mainDomain $subDomain
 		if [ "$ddnspod_ipv6_enable" == "1" ];then
 			arDdnsCheck 6 $mainDomain $subDomain
 		fi
