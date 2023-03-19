@@ -89,7 +89,7 @@ def gen_modules(modules):
 
 if stage == "stage1":
     to_remove = open(os.path.join(curr_path, "to_remove.txt"), "w")
-    check_and_cp()
+    #check_and_cp()
     to_remove.close()
 else:
     gmodules = None

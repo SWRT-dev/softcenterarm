@@ -193,6 +193,9 @@ input[type=button]:focus {
 }
 .cloud_main_radius h2 {
 	border-bottom:1px #AAA dashed;
+	height:32px;
+	margin-top:15px;
+	margin-bottom:15px;
 }
 .cloud_main_radius h3,
 .cloud_main_radius h4 {
@@ -200,10 +203,73 @@ input[type=button]:focus {
 	color:#FC0;
 	font-weight:normal;
 	font-style: normal;
+	margin-top:12px;
+	margin-bottom:12px;
 }
 .cloud_main_radius h5 {
 	color:#FFF;
 	font-weight:normal;
+	font-style: normal;
+	margin-top:9px;
+	margin-bottom:9x;
+}
+.content_status {
+	position: absolute;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius:10px;
+	z-index: 100;
+	/*background-color:#2B373B;*/
+	/*margin-left: -215px;*/
+	top: 0px;
+	width:980px;
+	return height:auto;
+	box-shadow: 3px 3px 10px #000;
+	background: rgba(0,0,0,0.90);
+	visibility:hidden;
+	margin-left:0px;
+	width:728px;
+}
+.popup_bar_bg_ks{
+	position:fixed;	
+	margin: auto;
+	top: 0;
+	left: 0;
+	width:100%;
+	height:100%;
+	z-index:99;
+	/*background-color: #444F53;*/
+	filter:alpha(opacity=90);  /*IE5、IE5.5、IE6、IE7*/
+	background-repeat: repeat;
+	visibility:hidden;
+	overflow:hidden;
+	/*background: url(/images/New_ui/login_bg.png);*/
+	background:rgba(68, 79, 83, 0.94) none repeat scroll 0 0 !important;
+	background-position: 0 0;
+	background-size: cover;
+	opacity: .94;
+}
+.user_title{
+	text-align:center;
+	font-size:18px;
+	color:#99FF00;
+	padding:10px;
+	font-weight:bold;
+}
+#log_content{
+	width: 98%;
+	padding-left: 13px;
+	padding-right: 33px;
+	border: 0px solid #222;
+	font-family:'Lucida Console';
+	font-size: 11px;
+	background: transparent;
+	color: #FFFFFF;
+	outline: none;
+	overflow-x: hidden;
+}
+#softcenter_log_title i{
+	color: #FC0;
 	font-style: normal;
 }
 </style>
@@ -215,6 +281,8 @@ var odmpid = '<% nvram_get("odmpid");%>';
 var modelname = '<% nvram_get("modelname"); %>';
 var TIMEOUT_SECONDS = 18;
 var softInfo = null;
+var count_down;
+var refresh_flag;
 var syncRemoteSuccess = 0; //判断是否进入页面后已经成功进行远端同步
 var currState = {
 	"installing": false,
@@ -222,6 +290,12 @@ var currState = {
 	"lastStatus": "-1",
 	"module": ""
 };
+
+String.prototype.myReplace = function(f, e){
+    var reg = new RegExp(f, "g"); 
+    return this.replace(reg, e); 
+}
+
 function checkField(o, f, d) {
 	if (typeof o[f] == "undefined") {
 		o[f] = d;
@@ -229,41 +303,31 @@ function checkField(o, f, d) {
 	return o[f];
 }
 function appPostScript(moduleInfo, script) {
-	if (currState.installing) {
-		console.log("current is in installing state");
-		return;
-	}
-	//Current page must has prefix of "Module_"
 	var data = {};
-	//currState.name = moduleInfo.name;
-	//TODO auto choose for home_url
 	data["softcenter_home_url"] = db_softcenter_["softcenter_home_url"];
 	data["softcenter_installing_todo"] = moduleInfo.name;
-	data["action_script"] = script;
+	data["softcenter_installing_title"] = moduleInfo.title;
 	if (script == "ks_app_install.sh") {
 		data["softcenter_installing_tar_url"] = moduleInfo.tar_url;
 		data["softcenter_installing_md5"] = moduleInfo.md5;
 		data["softcenter_installing_version"] = moduleInfo.version;
 		//Update title for this module
 		data[moduleInfo.name + "_title"] = moduleInfo.title;
-		data["action_mode"] = "ks_app_install";
+		action = "ks_app_install";
 	} else if (script == "ks_app_remove.sh") {
-		data["action_mode"] = "ks_app_remove";
+		action = "ks_app_remove";
 	}
+	var id = parseInt(Math.random() * 100000000);
+	var postData = { "id": id, "method": script, "params": [action], "fields": data };
 	$.ajax({
 		type: "POST",
-                url: "/applydb.cgi?p=softcenter_",
-                dataType: "text",
-                data: data,
-                success: function() {
-			var d = new Date();
-			//持续更新
-			currState.lastChangeTick = d / 1000 + TIMEOUT_SECONDS;
-			currState.installing = true;
-			showInstallStatus(true);
-		},
-		error: function() {
-			currState.installing = false;
+		url: "/_api/",
+		data: JSON.stringify(postData),
+		dataType: "json",
+		success: function(response) {
+			count_down = 5;
+			refresh_flag = 1;
+			get_log();
 		}
 	});
 }
@@ -271,90 +335,28 @@ function appInstallModule(moduleInfo) {
 	appPostScript(moduleInfo, "ks_app_install.sh");
 }
 function appUninstallModule(moduleInfo) {
-	if (!window.confirm('确定卸载吗')) {
+	if (!window.confirm(dict["Want to uninstall"])) {
 		return;
 	}
 	appPostScript(moduleInfo, "ks_app_remove.sh");
 }
 function initInstallStatus() {
-	var o = db_softcenter_;
-	var base = "softcenter_installing_";
-	if (o[base + "status"]) {
-		//状态不是0/1/7,则当前正处于安装状态,实时更新安装信息
-		if ((o[base + "status"] != "0") && (o[base + "status"] != "1") && (o[base + "status"] != "7")) {
-			var d = new Date();
-			currState.lastChangeTick = d / 1000 + TIMEOUT_SECONDS;
-			currState.lastStatus = o[base + "status"];
-			currState.installing = true;
-			//currState.name = o[base+"module"];
-			showInstallStatus(true);
-		}
-	}
-}
-function showInstallStatus(isInit) {
 	$.ajax({
-		type: "GET",
-        	url: "dbconf?p=softcenter_installing_",
-        	dataType: "script",
-        	success: function(xhr) {
-            		var o = db_softcenter_installing_;
-			var base = "softcenter_installing_";
-			console.log("status: " + o[base + "status"]);
-			if (isInit) {
-				currState.lastStatus = o[base + "status"];
-			}
-			var d = new Date();
-			var curr = d.getTime() / 1000;
-			curr_module = checkField(o, "softcenter_installing_module", "");
-			if (o[base + "status"] != currState.lastStatus) {
-				currState.lastStatus = o[base + "status"];
-				showInstallInfo(curr_module, currState.lastStatus);
-				// Install ok now
-				if (currState.lastStatus == "1" || currState.lastStatus == "7" || currState.lastStatus == "13") {
-					currState.installing = false;
-					setTimeout("window.location.reload()", 1000);
-					return;
-				} else if (currState.lastStatus == "0") {
-					currState.installing = false;
-				}
-			}
-			if (currState.lastChangeTick > curr) {
-				setTimeout("showInstallStatus()", 400);
-			} else {
-				currState.installing = false;
-				$("#appInstallInfo").html("等待超时,可尝试手动刷新");
-				//showInstallInfo("", currState.lastStatus);
+		url: '/_temp/soft_install_log.txt',
+		type: 'GET',
+		cache: false,
+		dataType: 'text',
+		success: function(response) {
+			//获取一次日志，如果日志存在，且没有"XU6J03M6"字符串，则说明有插件正在安装，那么弹出日志显示页面
+			if (response.length && response.search("XU6J03M6") == -1) {
+				count_down = 5;
+				refresh_flag = 1;
+				get_log();
 			}
 		}
-	})
+	});
 }
-function showInstallInfo(module, scode) {
-		var code = parseInt(scode);
-		var s = module.capitalizeFirstLetter();
-		var infos = [
-			"操作失败",
-			"已安装",
-			"插件将被安装到jffs分区...",
-			"正在下载中...请耐心等待...",
-			"正在安装中...",
-			"安装成功！请5秒后刷新本页面！...",
-			"卸载中......",
-			"卸载成功！",
-			"没有检测到在线版本号！",
-			"正在下载更新......",
-			"正在安装更新...",
-			"安装更新成功，5秒后刷新本页！ ",
-			"下载文件校验不一致！",
-			"然而并没有更新！",
-			"正在检查是否有更新~",
-			"检测更新错误！",
-			" wget下载错误，详情见系统日志！",
-			"卸载失败！请关闭插件后重试！"
-		];
-		document.getElementById("install_status").style.display = "";
-		$("#appInstallInfo").html(s + infos[code]);
-	}
-	//切换安装未安装面板
+
 function toggleAppPanel(showInstall) {
 		$('.show-install-btn').removeClass('active');
 		$('.show-uninstall-btn').removeClass('active');
@@ -436,6 +438,7 @@ function softceterInitData(data) {
 		$("#updateBtn").click(function() {
 			var moduleInfo = {
 				"name": "softcenter",
+				"title": dict["Software Center"],
 				"md5": remoteData.md5,
 				"tar_url": remoteData.tar_url,
 				"version": remoteData.version
@@ -502,13 +505,13 @@ function init(cb) {
 					title: name.capitalizeFirstLetter(),
 					tar_url: "{0}/{0}.tar.gz".format(name),
 					install: "0",
-					description: "暂无",
+					description: dict["None"],
 					new_version: false
 				});
 				// icon 规则:
 				// 如果已安装的插件,那图标必定在 /jffs/softcenter/res 目录, 通过 /res/icon-{name}.png 请求路径得到图标
-                // 如果是未安装的插件,则必定在 https://sc.paldier.com/softcenter/softcenter/icon-{name}.png
-		        item.icon = parseInt(item.install, 10) !== 0 ? ('/res/icon-' + item.name + '.png') : ('https://sc.paldier.com' + new Array(3).join('/softcenter') + '/res/icon-' + item.name + '.png');
+				// 如果是未安装的插件,则必定在 https://sc.paldier.com/softcenter/softcenter/icon-{name}.png
+				item.icon = parseInt(item.install, 10) !== 0 ? ('/res/icon-' + item.name + '.png') : ('https://sc.paldier.com' + new Array(3).join('/softcenter') + '/res/icon-' + item.name + '.png');
 			});
 			return result;
 		};
@@ -529,7 +532,7 @@ function init(cb) {
 				})
 				.fail(function() {
 					//如果没有更新成功，比如没网络，就用空数据merge本地
-					$("#spnOnlineVersion").html("<i>获取在线版本失败！请尝试重新刷新本页面，或者检查你的网络设置！</i>")
+					$("#spnOnlineVersion").html("<i>" +dict["Failed to get online version! Please try to refresh this page, or check your network settings!"] +"</i>")
 				});
 		}
 		notice_show();
@@ -542,10 +545,12 @@ $(function() {
 	sc_load_lang("sc1");
 	$.ajax({
 		type: "GET",
-		url: "/dbconf?p=softcenter",
-		dataType: "script",
+		url: "/_api/soft",
+		dataType: "json",
+		async: false,
+		cache: false,
 		success: function(response) {
-			db_softcenter_ = db_softcenter;
+			db_softcenter_ = response.result[0];
 			if(db_softcenter_["softcenter_server_tcode"] == "CN") {
 				db_softcenter_["softcenter_home_url"] = "https://sc.softcenter.site";
 			}
@@ -578,11 +583,12 @@ $(function() {
 			var jff2_scripts="<% nvram_get("jffs2_scripts"); %>";
 			if(jff2_scripts != 1){
 				$('#software_center_message').html('<h1><font color="#FF9900">错误！</font></h1><h2>软件中心不可用！因为你没有开启Enable JFFS custom scripts and configs选项！</h2><h2>请前往【系统管理】-<a href="Advanced_System_Content.asp"><u><em>【系统设置】</em></u></a>开启此选项再使用软件中心！！</h2>')
-			}else{
+				return false;
+			}
+			initInstallStatus();
 				init(function() {
 					toggleAppPanel(1);
 					//一刷新界面是否就正在插件在安装.
-					initInstallStatus();
 				});
 				//挂接tab切换安装状态事件
 				$('.show-install-btn').click(function() {
@@ -611,7 +617,37 @@ $(function() {
 					console.log('update', name);
 					appInstallModule(softInfo[name]);
 				});
-			}
+			//保留日志显示窗口
+			$(".popup_bar_bg_ks").click(
+				function() {
+					count_down = -1;
+				});
+			//窗口大小调整
+			$(window).resize(function(){
+				if($('.content_status').css("visibility") == "visible"){
+					document.scrollingElement.scrollTop = 0;
+					var page_h = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+					var page_w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+					var log_h = E("softcenter_log_pannel").clientHeight;
+					var log_w = E("softcenter_log_pannel").clientWidth;
+					var log_h_offset = (page_h - log_h) / 2;
+					var log_w_offset = (page_w - log_w) / 2 + 90;
+					$('#softcenter_log_pannel').offset({top: log_h_offset, left: log_w_offset});
+				}
+			});
+			//挂接按钮功能
+			$("#clean_log").click(
+				function() {
+					manipulate_softcenter_log("clean_log");
+				});
+			$("#download_log").click(
+				function() {
+					manipulate_softcenter_log("download_log");
+				});
+			$("#close_log").click(
+				function() {
+					close_softcenter_log();
+				});
 		}
 	});
 });
@@ -661,11 +697,147 @@ function notice_show(){
 		}
 	});
 }
+function count_down_close() {
+	if (count_down == "0") {
+		close_softcenter_log();
+	}
+	if (count_down < 0) {
+		E("close_log").value = dict["Close log window"]
+		return false;
+	}
+	E("close_log").value = dict["Auto close"] + "（" + count_down + "）"
+		--count_down;
+	setTimeout("count_down_close();", 1000);
+}
+function close_softcenter_log() {
+	E("softcenter_shade_pannel").style.visibility = "hidden";
+	E("softcenter_log_pannel").style.visibility = "hidden";
+	E("download_log").style.visibility = "hidden";
+	E("close_log").style.visibility = "hidden";
+	E("clean_log").style.visibility = "hidden";
+	if (refresh_flag == "1"){
+		refreshpage();
+	}
+	$(".show-install-btn").trigger("click");
+}
+function get_log(flag) {
+	if (flag){
+		E("download_log").style.visibility = "visible";
+		E("close_log").style.visibility = "visible";
+		E("clean_log").style.visibility = "visible";
+		E("log_content").rows = "32";
+		var LOG_FILE = '/_temp/soft_install_log_backup.txt';
+	}else{
+		E("download_log").style.visibility = "hidden";
+		E("close_log").style.visibility = "hidden";
+		E("clean_log").style.visibility = "hidden";
+		E("log_content").rows = "26";
+		var LOG_FILE = '/_temp/soft_install_log.txt';
+	}
+	document.scrollingElement.scrollTop = 0;
+	var page_h = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+	var page_w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+	var log_h = E("softcenter_log_pannel").clientHeight;
+	var log_w = E("softcenter_log_pannel").clientWidth;
+	var log_h_offset = (page_h - log_h) / 2;
+	var log_w_offset = (page_w - log_w) / 2 + 90;
+	$('#softcenter_log_pannel').offset({top: log_h_offset, left: log_w_offset});
+
+	E("softcenter_shade_pannel").style.visibility = "visible";
+	E("softcenter_log_pannel").style.visibility = "visible";
+	
+	$.ajax({
+		url: LOG_FILE,
+		type: 'GET',
+		dataType: 'html',
+		async: false,
+		cache: false,
+		success: function(response) {
+			if (flag){
+				E("softcenter_log_title").innerHTML = "<i>&nbsp;&nbsp;&nbsp;&nbsp;" + dict["Plugin installation/uninstallation log"] + "</i>";
+			}else{
+				E("softcenter_log_title").innerHTML = "<i>&nbsp;&nbsp;&nbsp;&nbsp;" + dict["Do not refresh this page when Softcenter is installing/uninstalling plugin"] + "</i>";
+			}
+			if (response.search("XU6J03M6") != -1) {
+				E("log_content").value = response.myReplace("XU6J03M6", " ");
+				E("log_content").scrollTop = E("log_content").scrollHeight;
+				E("close_log").style.visibility = "visible";
+				if (flag){
+					count_down = -1;
+				}else{
+					count_down = 5;
+				}
+				count_down_close();
+				return true;
+			}else if (response.length == 0){
+				E("softcenter_log_title").innerHTML = "<i>&nbsp;&nbsp;&nbsp;&nbsp;" + dict["No Softcenter log information"] + "</i>";
+				E("log_content").value = dict["The log file is empty, please close this window"];
+				E("close_log").style.visibility = "visible";
+				return false;
+			}
+			setTimeout("get_log(" + flag + ");", 300);
+			E("log_content").value = response.myReplace("XU6J03M6", " ");
+			E("log_content").scrollTop = E("log_content").scrollHeight;
+		},
+		error: function(xhr) {
+			E("softcenter_log_title").innerHTML = "<i>&nbsp;&nbsp;&nbsp;&nbsp;" + dict["No Softcenter log information"] + "</i>";
+			E("log_content").value = dict["The log file is empty, please close this window"];
+			E("close_log").style.visibility = "visible";
+			return false;
+		}
+	});
+}
+function manipulate_softcenter_log(arg) {
+	var id = parseInt(Math.random() * 100000000);
+	var postData = {"id": id, "method": "ks_app_install.sh", "params":[arg], "fields": "" };
+	$.ajax({
+		type: "POST",
+		url: "/_api/",
+		async: false,
+		cache: false,
+		data: JSON.stringify(postData),
+		dataType: "json",
+		success: function(response){
+			if(response.result == id){
+				if(arg == "download_log"){
+					var b = document.createElement('A')
+					b.href = "_root/files/softcenter_log.txt"
+					b.download = 'softcenter_log.txt'
+					document.body.appendChild(b);
+					b.click();
+					document.body.removeChild(b);
+				}
+				if(arg == "clean_log"){
+					E("log_content").value = dict["The log file has been removed, please close this window"]
+				}
+			}
+		},
+		error: function(xhr) {
+			alert(dict["Failed to load log file"]);
+			return false;
+		}
+	});
+}
 </script>
 </head>
 <body>
 	<div id="TopBanner"></div>
 	<div id="Loading" class="popup_bg"></div>
+	<div id="softcenter_shade_pannel" class="popup_bar_bg_ks">
+		<!-- this is the popup area for install/uninstall log status -->
+		<div id="softcenter_log_pannel" class="content_status">
+			<div sclang class="user_title">Softcenter - Log</div>
+			<div style="margin-left:15px" id="softcenter_log_title"></div>
+			<div style="margin: 10px 10px 10px 10px;width:98%;text-align:center;overflow:hidden;">
+				<textarea cols="63" rows="25" wrap="on" readonly="readonly" id="log_content" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+			</div>
+			<div style="margin-top:5px;padding-bottom:10px;width:100%;text-align:center;">
+				<input sclang class="button_gen" type="button" style="visibility:hidden;min-width:88px;" id="download_log" value="Save log">
+				<input sclang class="button_gen" type="button" style="visibility:hidden;min-width:88px;margin-left: 10px;" id="close_log" value="Close log window">
+				<input sclang class="button_gen" type="button" style="visibility:hidden;min-width:88px;margin-left: 10px;" id="clean_log" value="Clean log">
+			</div>
+		</div>
+	</div>
 	<table class="content" align="center" cellpadding="0" cellspacing="0">
 		<tr>
 			<td width="17">&nbsp;</td>
@@ -684,6 +856,9 @@ function notice_show(){
 											<td bgcolor="#4D595D" colspan="3" valign="top">
 												<div>&nbsp;</div>
 												<div id="modelid" class="formfonttitle"></div>
+												<div align="right" style="padding-right:10px;">
+													<a sclang type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(1)">Open log</a>
+												</div>
 												<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 													<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
 													</table>
@@ -722,14 +897,6 @@ function notice_show(){
 														<tr height="10px">
 															<td colspan="3"></td>
 														</tr>
-														<tr bgcolor="#444f53" id="install_status" style="display: none;" width="235px">
-															<td>
-																<div style="padding:10px;width:95%;font-size:14px;" id="appInstallInfo">
-																</div>
-															</td>
-															<td class="cloud_main_radius_right">
-															</td>
-														 </tr>
 														<tr height="10px">
 															<td colspan="3"></td>
 														</tr>

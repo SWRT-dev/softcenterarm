@@ -34,6 +34,21 @@
   "Current version:": "当前版本:",
   "Latest version:": "在线版本:",
   "loading...": "更新中...",
+  "Want to uninstall": "确定卸载吗",
+  "None": "暂无",
+  "Failed to get online version! Please try to refresh this page, or check your network settings!": "获取在线版本失败！请尝试重新刷新本页面，或者检查你的网络设置！",
+  "Close log window": "关闭日志",
+  "Auto close": "自动关闭",
+  "Plugin installation/uninstallation log": "软件中心插件安装/卸载日志记录。",
+  "Do not refresh this page when Softcenter is installing/uninstalling plugin": "插件安装/卸载过程中请勿刷新此页面！",
+  "No Softcenter log information": "暂无软件中心日志信息",
+  "The log file is empty, please close this window": "日志文件为空，请关闭本窗口！",
+  "The log file has been removed, please close this window": "日志已清除，请关闭本窗口！",
+  "Failed to load log file": "日志下载失败！",
+  "Softcenter - Log": "软件中心 - 日志记录",
+  "Save log": "下载日志",
+  "Clean log": "清空日志",
+  "Open log": "查看日志",
   "Softcenter - Offline installation": "软件中心 - 离线安装"
 }
 

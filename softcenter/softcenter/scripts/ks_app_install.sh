@@ -1,46 +1,22 @@
 #!/bin/sh
-
-# Copyright (C) 2021-2022 SWRTdev
+# Copyright (C) 2021-2023 SWRTdev
+#softcenter_installing_name 	#正在安装的插件名
+#softcenter_installing_todo 	#希望安装/卸载的插件
+#softcenter_installing_title 	#希望安装/卸载的插件名
+#softcenter_installing_version 	#正在安装插件的版本
+#softcenter_installing_md5 	#正在安装插件的版本的md5值
+#softcenter_installing_tar_url 	#插件对应的下载地址
 
 eval $(dbus export softcenter_installing_)
 source /jffs/softcenter/scripts/base.sh
-
-#softcenter_installing_module 	#正在安装的模块
-#softcenter_installing_todo 	#希望安装的模块
-#softcenter_installing_tick 	#上次安装开始的时间
-#softcenter_installing_version 	#正在安装的版本
-#softcenter_installing_md5 	#正在安装的版本的md5值
-#softcenter_installing_tar_url 	#模块对应的下载地址
-
-#softcenter_installing_status=		#尚未安装
-#softcenter_installing_status=0		#尚未安装
-#softcenter_installing_status=1		#已安装
-#softcenter_installing_status=2		#将被安装到jffs分区...
-#softcenter_installing_status=3		#正在下载中...请耐心等待...
-#softcenter_installing_status=4		#正在安装中...
-#softcenter_installing_status=5		#安装成功！请5秒后刷新本页面！...
-#softcenter_installing_status=6		#卸载中......
-#softcenter_installing_status=7		#卸载成功！
-#softcenter_installing_status=8		#没有检测到在线版本号！
-#softcenter_installing_status=9		#正在下载更新......
-#softcenter_installing_status=10	#正在安装更新...
-#softcenter_installing_status=11	#安装更新成功，5秒后刷新本页！
-#softcenter_installing_status=12	#下载文件校验不一致！
-#softcenter_installing_status=13	#然而并没有更新！
-#softcenter_installing_status=14	#正在检查是否有更新~
-#softcenter_installing_status=15	#检测更新错误！
-#softcenter_installing_status=16	#下载错误，代码：！
-#softcenter_installing_status=17	#卸载失败！请关闭插件后重试！
-
+alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】:'
 softcenter_home_url=$(dbus get softcenter_home_url)
 softcenter_arch=$(dbus get softcenter_arch)
 softcenter_server_tcode=$(dbus get softcenter_server_tcode)
-CURR_TICK=$(date +%s)
-BIN_NAME=$(basename "$0")
-BIN_NAME="${BIN_NAME%.*}"
-if [ "$ACTION" != "" ]; then
-	BIN_NAME=$ACTION
-fi
+LOG_FILE=/tmp/upload/soft_install_log.txt
+LOG_FILE_BACKUP=/tmp/upload/soft_install_log_backup.txt
+URL_SPLIT="/"
+
 if [ "$softcenter_arch" == "" ]; then
 	/jffs/softcenter/bin/sc_auth arch
 	eval $(dbus export softcenter_arch)
@@ -63,51 +39,101 @@ elif [ "${MODEL:0:3}" == "TUF" ] || [ "$(nvram get swrt_tuf)" == "1" ];then
 	TUF=1
 fi
 
-LOGGER() {
-#	echo $1
-	logger $1
+quit_install(){
+	[ "${softcenter_installing_todo}" != "" ] && rm -rf "/tmp/${softcenter_installing_todo}*"
+	dbus set softcenter_installing_todo=""
+	dbus set softcenter_installing_title=""
+	dbus set softcenter_installing_name=""
+	dbus set softcenter_installing_tar_url=""
+	dbus set softcenter_installing_version=""
+	dbus set softcenter_installing_md5=""
+	echo_date "============================= end ================================="
+	echo "XU6J03M6"
+	exit
+}
+
+quit_uninstall(){
+	dbus set softcenter_installing_todo=""
+	dbus set softcenter_installing_title=""
+	echo_date "============================= end ================================="
+	echo "XU6J03M6"
+	exit
+}
+
+jffs_space(){
+	local JFFS_AVAIL=$(df | grep -w "/jffs$" | awk '{print $4}')
+	#ubifs自带压缩，以压缩包大小为准
+	local MODULE_NEEDED=$(du -s /tmp/${FNAME} | awk '{print $1}')
+	local JFFS_FREE=$((${JFFS_AVAIL} - ${MODULE_NEEDED}))
+	local MODULE_UPGRADE=$(dbus get softcenter_module_${softcenter_installing_todo}_install)
+	if [ "$(nvram get sc_mount)" == "0" ];then
+		if [ -z "${MODULE_UPGRADE}" ];then
+			if [ "${JFFS_AVAIL}" -lt "2048" ];then
+				echo_date "======================================================="
+				echo_date "当前jffs分区剩余：${JFFS_AVAIL}KB, 剩余可用空间已经小于2MB！"
+				echo_date "JFFS分区可用空间过低，软件中心将不会安装此插件！！！"
+				echo_date "删除相关文件并退出..."
+				echo_date "======================================================="
+				quit_install
+			elif [ "${JFFS_FREE}" -lt "2048" ];then
+				echo_date "======================================================="
+				echo_date "当前jffs分区剩余：${JFFS_AVAIL}KB, 插件安装大致需要${MODULE_NEEDED}KB"
+				echo_date "JFFS分区剩余可用空间不足！，软件中心将不会安装此插件！！！"
+				echo_date "删除相关文件并退出..."
+				echo_date "======================================================="
+				quit_install
+			fi
+		elif [ "${MODULE_UPGRADE}" == "1" ];then
+			if [ "${JFFS_AVAIL}" -lt "2048" ];then
+				echo_date "======================================================="
+				echo_date "当前jffs分区剩余：${JFFS_AVAIL}KB，剩余可用空间已经小于2MB！"
+				echo_date "JFFS分区可用空间过低，软件中心将不会安装此插件！！！"
+				echo_date "删除相关文件并退出..."
+				echo_date "======================================================="
+				quit_install
+			fi
+		fi
+		echo_date "当前jffs分区剩余：${JFFS_AVAIL}KB, 空间满足，继续安装！"
+	else
+		echo_date "U盘已挂载，继续安装！"
+	fi
 }
 
 install_module() {
-	if [ "${softcenter_home_url}" = "" -o "${softcenter_installing_md5}" = "" -o "${softcenter_installing_version}" = "" ]; then
-		LOGGER "【软件中心】input error, something not found"
-		exit 1
+	if [ "${softcenter_home_url}" = "" -o "${softcenter_installing_md5}" = "" -o "${softcenter_installing_version}" = "" -o "${softcenter_installing_tar_url}" = "" -o "${softcenter_installing_todo}" = "" -o "${softcenter_installing_title}" = "" ]; then
+		echo_date "-------------------------------------------------------------------"
+		echo_date "软件中心：参数错误，退出！"
+		echo_date "这种情况是极少的，如果你遇到了，建议重启路由器后再尝试卸载操作！"
+		echo_date "如果仍然不能解决，只能建议重置软件中心或者重置路由器已解决问题！"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次插件安装！"
+		quit_install
 	fi
 
-	if [ "${softcenter_installing_tick}" = "" ]; then
-		export softcenter_installing_tick=0
-	fi
-	LAST_TICK=$(expr ${softcenter_installing_tick} + 20)
-	if [ "${LAST_TICK}" -ge "${CURR_TICK}" -a "${softcenter_installing_module}" != "" ]; then
-		LOGGER "【软件中心】module ${softcenter_installing_module} is installing"
-		exit 2
+	local SCRIPT_COUNT=$(pidof ks_app_install.sh | wc -l)
+	if [ "${SCRIPT_COUNT}" != "1" ];then
+		if [ "${softcenter_installing_name}" != "" ];then
+			# 如果有其它ks_app_install.sh在运行，且${softcenter_installing_name}不为空，说明有插件正在安装/卸载，此时应该退出安装
+			echo_date "-------------------------------------------------------------------"
+			echo_date "软件中心：检测到上个插件：【${softcenter_installing_name}】正在安装/卸载..."
+			echo_date "请等待上个插件安装/卸载完毕后再试！"
+			echo_date "如果等待很久仍然是该错误，请重启路由后再试！"
+			echo_date "-------------------------------------------------------------------"
+			echo_date "退出本次插件安装！"
+			quit_install
+		fi
 	fi
 
-	if [ "${softcenter_installing_todo}" = "" ]; then
-		#curr module name not found
-		LOGGER "【软件中心】module name not found"
-		exit 3
+	if [ "${softcenter_installing_name}" != "" ];then
+		echo_date "软件中心：检测到上次安装的插件【${softcenter_installing_name}】没有正确安装！"
+		echo_date "软件中心：如果已安装里已经有【${softcenter_installing_name}】插件图标，建议将其卸载后重新安装！"
 	fi
 
 	# Just ignore the old installing_module
-	export softcenter_installing_module=${softcenter_installing_todo}
-	export softcenter_installing_tick=$(date +%s)
-	dbus set softcenter_installing_status="2"
-	sleep 1
-	dbus save softcenter_installing_
+	export softcenter_installing_name=${softcenter_installing_title}
+	dbus set softcenter_installing_name=${softcenter_installing_title}
 
-	URL_SPLIT="/"
-	#OLD_MD5=$(dbus get softcenter_module_${softcenter_installing_module_md5})
-	OLD_VERSION=$(dbus get softcenter_module_${softcenter_installing_module}_version)
-
-	if [ "$softcenter_server_tcode" == "CN" ]; then
-		HOME_URL="https://sc.softcenter.site/$ARCH_SUFFIX"
-	else
-		HOME_URL="https://sc.paldier.com/$ARCH_SUFFIX"
-	fi
-
-	TAR_URL=${HOME_URL}${URL_SPLIT}${softcenter_installing_tar_url}
-	FNAME=$(basename ${softcenter_installing_tar_url})
+	OLD_VERSION=$(dbus get softcenter_module_${softcenter_installing_todo}_version)
 
 	if [ "$OLD_VERSION" = "" ]; then
 		OLD_VERSION=0
@@ -117,143 +143,172 @@ install_module() {
 	if [ "${softcenter_installing_todo}" = "softcenter" ]; then
 		CMP="-1"
 	fi
-	if [ "$CMP" = "-1" ]; then
+	if [ "${CMP}" != "-1" ]; then
+		echo_date "-------------------------------------------------------------------"
+		echo_date "插件【${softcenter_installing_name}】本地版本号已经是最新版本，无须更新！"
+		echo_date "插件【${softcenter_installing_name}】本地版本号：${OLD_VERSION}"
+		echo_date "插件【${softcenter_installing_name}】在线版本号：${softcenter_installing_version}"
+		echo_date "目前软件中心不支持插件降级为低版本，或者同版本平刷！"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次插件安装！"
+		quit_install
+	fi
 
+	if [ "$softcenter_server_tcode" == "CN" ]; then
+		HOME_URL="https://sc.softcenter.site/$ARCH_SUFFIX"
+	else
+		HOME_URL="https://sc.paldier.com/$ARCH_SUFFIX"
+	fi
+
+	local TAR_URL=${HOME_URL}${URL_SPLIT}${softcenter_installing_tar_url}
+	local FNAME=$(basename ${softcenter_installing_tar_url})
+	echo_date "插件【${softcenter_installing_name}】的压缩包正在下载中，请稍候..."
 	cd /tmp
 	rm -f ${FNAME}
-	rm -rf "/tmp/$softcenter_installing_module"
-	dbus set softcenter_installing_status="3"
-	sleep 1
-	wget -t 2 -T 20 --dns-timeout=15 --no-check-certificate -q ${TAR_URL}
+	rm -rf "/tmp/$softcenter_installing_todo"
+	wget -t 2 -T 20 --dns-timeout=15 --no-check-certificate ${TAR_URL}
 	RETURN_CODE=$?
 
 	if [ "$RETURN_CODE" != "0" ]; then
-		dbus set softcenter_installing_status="16"
-		sleep 3
-		dbus set softcenter_installing_status="0"
-		dbus set softcenter_installing_module=""
-		dbus set softcenter_installing_todo=""
-		LOGGER "【软件中心】wget ${TAR_URL} error, ${RETURN_CODE}"
-		exit ${RETURN_CODE}
+		echo_date "-------------------------------------------------------------------"
+		echo_date "压缩包下载错误，错误代码：$RETURN_CODE"
+		echo_date "出现该错误一般是本地网络问题，比如本地DNS无法解析软件中心域名等..."
+		echo_date "建议关闭代理、更换路由器DNS后再试，或者使用下方提供的插件地址手动下载后离线安装。"
+		echo_date "下载地址：${TAR_URL}"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次在线安装！"
+		quit_install
+	else
+		echo_date "插件【${softcenter_installing_title}】的安装包：${FNAME}下载成功！"
 	fi
 
-	md5sum_gz=$(md5sum /tmp/${FNAME} | sed 's/ /\n/g'| sed -n 1p)
+	echo_date "准备校验文件：${FNAME}"
+	local md5sum_gz=$(md5sum /tmp/${FNAME} | awk '{print $1}')
 	if [ "$md5sum_gz"x != "$softcenter_installing_md5"x ]; then
-		LOGGER "【软件中心】md5 not equal $md5sum_gz"
-		dbus set softcenter_installing_status="12"
-		rm -f ${FNAME}
-		sleep 3
-
-		dbus set softcenter_installing_status="0"
-		dbus set softcenter_installing_module=""
-		dbus set softcenter_installing_todo=""
-
-		rm -f ${FNAME}
-		rm -rf "/tmp/$softcenter_installing_module"
-		exit
+		echo_date "-------------------------------------------------------------------"
+		echo_date "下载的插件压缩包文件校验不一致！退出本次插件安装！"
+		echo_date "插件【${softcenter_installing_name}】在线版本md5：${softcenter_installing_md5}"
+		echo_date "插件【${softcenter_installing_name}】下载版本md5：${md5sum_gz}"
+		echo_date "建议重启/重置路由器后重试，或者使用下方提供的插件地址手动下载后离线安装。"
+		echo_date "下载地址：${TAR_URL}"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次在线安装！"
+		quit_install
+	fi
+	echo_date "校验一致，准备解压..."
+	tar -zxf ${FNAME}
+	if [ "$?" != "0" ]; then
+		echo_date "-------------------------------------------------------------------"
+		echo_date "错误：插件压缩包解压失败！退出本次插件安装！"
+		echo_date "建议重启/重置路由器后重试。"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次在线安装！"
+		quit_install
 	else
-		tar -zxf ${FNAME}
-		dbus set softcenter_installing_status="4"
-
-		if [ ! -f /tmp/${softcenter_installing_module}/install.sh ]; then
-			dbus set softcenter_installing_status="0"
-			dbus set softcenter_installing_module=""
-			dbus set softcenter_installing_todo=""
-
-			#rm -f ${FNAME}
-			#rm -rf "/tmp/${softcenter_installing_module}"
-
-			LOGGER "【软件中心】package hasn't install.sh"
-			exit 5
-		fi
-
-		if [ -f /tmp/${softcenter_installing_module}/uninstall.sh ]; then
-			chmod 755 /tmp/${softcenter_installing_module}/uninstall.sh
-			mv /tmp/${softcenter_installing_module}/uninstall.sh /jffs/softcenter/scripts/uninstall_${softcenter_installing_todo}.sh
-		fi
-
-		if [ -d /tmp/${softcenter_installing_module}/ROG -a "$ROG" == "1" ]; then
-			cp -rf /tmp/${softcenter_installing_module}/ROG/* /tmp/${softcenter_installing_module}/
-		fi
-
-		if [ -d /tmp/${softcenter_installing_module}/ROG -a "$TUF" == "1" ]; then
-			# 骚红变橙色
-			find /tmp/${softcenter_installing_module}/ROG/ -name "*.asp" | xargs sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g'
-			find /tmp/${softcenter_installing_module}/ROG/ -name "*.css" | xargs sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g'
-			cp -rf /tmp/${softcenter_installing_module}/ROG/* /tmp/${softcenter_installing_module}/
-		fi
-
-		chmod a+x /tmp/${softcenter_installing_module}/install.sh
-		sh /tmp/${softcenter_installing_module}/install.sh
-		sleep 3
-
-		rm -f ${FNAME}
-		rm -rf "/tmp/$softcenter_installing_module"
-
-		if [ "$softcenter_installing_module" != "softcenter" ]; then
-			dbus set softcenter_module_${softcenter_installing_module}_md5=${softcenter_installing_md5}
-			dbus set softcenter_module_${softcenter_installing_module}_version=${softcenter_installing_version}
-			dbus set softcenter_module_${softcenter_installing_module}_install=1
-			dbus set ${softcenter_installing_module}_version=${softcenter_installing_version}
-		else
-			dbus set softcenter_version=${softcenter_installing_version};
-			dbus set softcenter_md5=${softcenter_installing_md5}
-		fi
-		dbus set softcenter_installing_module=""
-		dbus set softcenter_installing_todo=""
-		dbus set softcenter_installing_status="1"
+		echo_date "解压成功，寻找安装脚本！"
+	fi
+	if [ ! -f /tmp/${softcenter_installing_todo}/install.sh ]; then
+		echo_date "-------------------------------------------------------------------"
+		echo_date "插件包内未找到 install.sh 安装脚本！退出本次安装！"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次在线安装！"
+		quit_install
+	else
+		echo_date "找到安装脚本，准备安装！"
 	fi
 
-	else
-		LOGGER "【软件中心】current version is newest version"
-		dbus set softcenter_installing_status="13"
-		sleep 3
-
-		dbus set softcenter_installing_status="0"
-		dbus set softcenter_installing_module=""
-		dbus set softcenter_installing_todo=""
+	jffs_space
+	if [ -f /tmp/${softcenter_installing_todo}/uninstall.sh ]; then
+		chmod 755 /tmp/${softcenter_installing_todo}/uninstall.sh
+		cp -rf /tmp/${softcenter_installing_todo}/uninstall.sh /jffs/sfotcenter/scripts/uninstall_${softcenter_installing_todo}.sh
 	fi
+
+	if [ "$ROG" == "1" ]; then
+		echo_date "为插件【${softcenter_installing_name}】安装ROG风格皮肤..."
+		sed -i '/asuscss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+		[ -d /tmp/${softcenter_installing_todo}/ROG ] && cp -rf /tmp/${softcenter_installing_todo}/ROG/* /tmp/${softcenter_installing_todo}/
+
+	elif [ "$TUF" == "1" ]; then
+		echo_date "为插件【${softcenter_installing_name}】安装TUF风格皮肤..."
+		sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+		sed -i '/asuscss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+
+		find /tmp/${softcenter_installing_todo}/ROG/ -name "*.css" | xargs sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g'
+		[ -d /tmp/${softcenter_installing_todo}/ROG ] && cp -rf /tmp/${softcenter_installing_todo}/ROG/* /tmp/${softcenter_installing_todo}/
+	else
+		echo_date "为插件【${softcenter_installing_name}】安装ASUSWRT风格皮肤..."
+		sed -i '/rogcss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+	fi
+	echo_date "使用插件【${softcenter_installing_name}】提供的install.sh脚本进行安装..."
+	[ "${softcenter_installing_todo}" != "softcenter" ] && echo_date =========================== step 2 ================================
+
+	chmod a+x /tmp/${softcenter_installing_todo}/install.sh
+	sh /tmp/${softcenter_installing_todo}/install.sh
+	[ "${softcenter_installing_todo}" != "softcenter" ] && echo_date =========================== step 3 ================================
+	if [ "$softcenter_installing_todo" != "softcenter" ]; then
+		echo_date "为插件【${softcenter_installing_name}】设置版本号：${softcenter_installing_version}"
+		dbus set softcenter_module_${softcenter_installing_todo}_md5=${softcenter_installing_md5}
+		dbus set softcenter_module_${softcenter_installing_todo}_version=${softcenter_installing_version}
+		dbus set softcenter_module_${softcenter_installing_todo}_install=1
+	else
+		echo_date "为软件中心设置版本号：${softcenter_installing_version}"
+		dbus set softcenter_version=${softcenter_installing_version}
+		dbus set softcenter_md5=${softcenter_installing_md5}
+	fi
+	if [ "$(df | grep -w "/jffs$" | awk '{print $4}')" -lt "2000" ];then
+		echo_date "注意！目前jffs分区剩余容量已不足2MB！无法保证系统正常运行！"
+	fi
+	echo_date "安装完毕！"
+	quit_install
 }
 
 uninstall_module() {
-	if [ "${softcenter_installing_tick}" = "" ]; then
-		export softcenter_installing_tick=0
-	fi
-	LAST_TICK=$(expr ${softcenter_installing_tick} + 20)
-	if [ "${LAST_TICK}" -ge "${CURR_TICK}" -a "${softcenter_installing_module}" != "" ]; then
-		LOGGER "【软件中心】module ${softcenter_installing_module} is installing"
-		exit 2
-	fi
-
-	if [ "${softcenter_installing_todo}" = "" -o "${softcenter_installing_todo}" = "softcenter" ]; then
-		#curr module name not found
-		LOGGER "【软件中心】module name not found"
-		exit 3
+	if [ "${softcenter_installing_todo}" = "" -o "${softcenter_installing_title}" = "" -o "${softcenter_installing_todo}" == "softcenter" ]; then
+		echo_date "-------------------------------------------------------------------"
+		echo_date "软件中心：参数错误，退出！"
+		echo_date "这种情况是极少的，如果你遇到了，建议重启路由器后再尝试卸载操作！"
+		echo_date "如果仍然不能解决，只能建议重置软件中心或者重置路由器已解决问题！"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次插件卸载！"
+		quit_uninstall
 	fi
 
 	local ENABLED=$(dbus get ${softcenter_installing_todo}_enable)
 	if [ "${ENABLED}" == "1" ]; then
-		LOGGER "【软件中心】please disable ${softcenter_installing_module} then try again"
-		dbus set softcenter_installing_status="17"
-		sleep 3
-		dbus set softcenter_installing_status="0"
-		exit 4
+		echo_date "-------------------------------------------------------------------"
+		echo_date "软件中心：插件【${softcenter_installing_title}】无法卸载！"
+		echo_date "因为插件【${softcenter_installing_title}】已经开启！你必须先将其关闭后才能进行卸载操作！"
+		echo_date "-------------------------------------------------------------------"
+		echo_date "退出本次插件卸载！"
+		quit_uninstall
+	fi
+	echo_date "开始卸载【${softcenter_installing_title}】插件，请稍候！"
+	if [ -f /jffs/softcenter/scripts/${softcenter_installing_todo}_uninstall.sh]; then
+		echo_date "使用插件【${softcenter_installing_title}】自带卸载脚本：${softcenter_installing_todo}_uninstall.sh 卸载！"
+ 		sh /jffs/softcenter/scripts/${softcenter_installing_todo}_uninstall.sh
+	elif [ -f "/jffs/softcenter/scripts/uninstall_${softcenter_installing_todo}.sh" ]; then
+		echo_date "使用插件【${softcenter_installing_title}】自带卸载脚本：uninstall_${softcenter_installing_todo}.sh 卸载！"
+		sh /jffs/softcenter/scripts/uninstall_${softcenter_installing_todo}.sh
+	else
+		echo_date "没有找到插件【${softcenter_installing_title}】自带的卸载脚本，使用软件中心的卸载功能进行卸载！"
+		rm -rf /jffs/softcenter/${softcenter_installing_todo} >/dev/null 2>&1
+		rm -rf /jffs/softcenter/bin/${softcenter_installing_todo} >/dev/null 2>&1
+		rm -rf /jffs/softcenter/init.d/*${softcenter_installing_todo}* >/dev/null 2>&1
+		rm -rf /jffs/softcenter/scripts/${softcenter_installing_todo}*.sh >/dev/null 2>&1
+		rm -rf /jffs/softcenter/res/icon-${softcenter_installing_todo}.png >/dev/null 2>&1
+		rm -rf /jffs/softcenter/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
 	fi
 
-	# Just ignore the old installing_module
-	export softcenter_installing_module=${softcenter_installing_todo}
-	export softcenter_installing_tick=$(date +%s)
-	export softcenter_installing_status="6"
-	dbus save softcenter_installing_
-
-	dbus remove softcenter_module_${softcenter_installing_module}_md5
-	dbus remove softcenter_module_${softcenter_installing_module}_version
-	dbus remove softcenter_module_${softcenter_installing_module}_install
-	dbus remove softcenter_module_${softcenter_installing_module}_description
-	dbus remove softcenter_module_${softcenter_installing_module}_name
-	dbus remove softcenter_module_${softcenter_installing_module}_title
-
-	txt=$(dbus list ${softcenter_installing_todo})
+	if [ "$(dbus get softcenter_module_${softcenter_installing_todo}_install)" != "" ];then
+		echo_date "移除插件【${softcenter_installing_title}】储存的相关参数..."
+		dbus remove softcenter_module_${softcenter_installing_todo}_md5
+		dbus remove softcenter_module_${softcenter_installing_todo}_version
+		dbus remove softcenter_module_${softcenter_installing_todo}_install
+		dbus remove softcenter_module_${softcenter_installing_todo}_description
+		dbus remove softcenter_module_${softcenter_installing_todo}_name
+		dbus remove softcenter_module_${softcenter_installing_todo}_title
+	fi
+	local txt=$(dbus list ${softcenter_installing_todo})
 	printf "%s\n" "$txt" |
 	while IFS= read -r line; do
 		line2="${line%=*}"
@@ -262,49 +317,53 @@ uninstall_module() {
 		fi
 	done
 
-	sleep 3
-	dbus set softcenter_installing_module=""
-	dbus set softcenter_installing_status="7"
-	dbus set softcenter_installing_todo=""
+	echo_date "卸载成功！"
+	quit_uninstall
+}
 
-	#try to call uninstall script
-	if [ -f "/jffs/softcenter/scripts/${softcenter_installing_todo}_uninstall.sh" ]; then
- 		sh /jffs/softcenter/scripts/${softcenter_installing_todo}_uninstall.sh
-	elif [ -f "/jffs/softcenter/scripts/uninstall_${softcenter_installing_todo}.sh" ]; then
-		sh /jffs/softcenter/scripts/uninstall_${softcenter_installing_todo}.sh
+download_softcenter_log(){
+	rm -rf /tmp/files
+	rm -rf /jffs/softcenter/webs/files
+	mkdir -p /tmp/files
+	ln -sf /tmp/files /jffs/softcenter/webs/files
+	if [ -f "${LOG_FILE_BACKUP}" ];then
+		cp -rf ${LOG_FILE_BACKUP} /tmp/files/softcenter_log.txt
+		sed -i 's/XU6J03M6//g' /tmp/files/softcenter_log.txt
 	else
-		if [ -n "${softcenter_installing_todo}" ]; then
-			rm -rf /jffs/softcenter/${softcenter_installing_todo}
-			rm -rf /jffs/softcenter/bin/${softcenter_installing_todo}
-			rm -rf /jffs/softcenter/init.d/*${softcenter_installing_todo}*
-			rm -rf /jffs/softcenter/scripts/${softcenter_installing_todo}*.sh
-			rm -rf /jffs/softcenter/res/icon-${softcenter_installing_todo}.png
-			rm -rf /jffs/softcenter/webs/Module_${softcenter_installing_todo}.asp
-		fi
+		echo "日志为空" > /tmp/files/softcenter_log.txt
 	fi
 }
 
-#LOGGER $BIN_NAME
-case $ACTION in
-update)
-	[ -n "$SCAPI" ] && http_response $1
-	install_module
+clean_backup_log() {
+	local LOG_MAX=1000
+	[ $(wc -l "${LOG_FILE_BACKUP}" | awk '{print $1}') -le "$LOG_MAX" ] && return
+	local logdata=$(tail -n 500 "${LOG_FILE_BACKUP}")
+	echo "${logdata}" > ${LOG_FILE_BACKUP} 2> /dev/null
+	unset logdata
+}
+
+case $2 in
+download_log)
+	download_softcenter_log
+	http_response $1
 	;;
-install)
-	[ -n "$SCAPI" ] && http_response $1
-	install_module
-	;;
-ks_app_install)
-	[ -n "$SCAPI" ] && http_response $1
-	install_module
+clean_log)
+	echo XU6J03M6 | tee ${LOG_FILE_BACKUP}
+	http_response $1
 	;;
 ks_app_remove)
-	[ -n "$SCAPI" ] && http_response $1
-	uninstall_module
+	true > ${LOG_FILE}
+	http_response $1
+	echo_date "============================ start ================================" | tee -a ${LOG_FILE} ${LOG_FILE_BACKUP}
+	uninstall_module | tee -a ${LOG_FILE} ${LOG_FILE_BACKUP}
+	clean_backup_log
 	;;
-*)
-	[ -n "$SCAPI" ] && http_response $1
-	install_module
+install|update|ks_app_install|*)
+	true > ${LOG_FILE}
+	http_response $1
+	echo_date "=========================== step 1 ================================" | tee -a ${LOG_FILE} ${LOG_FILE_BACKUP}
+	install_module | tee -a ${LOG_FILE} ${LOG_FILE_BACKUP}
+ 	clean_backup_log
 	;;
 esac
 

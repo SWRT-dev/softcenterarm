@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2021-2022 SWRTdev
+# Copyright (C) 2021-2023 SWRTdev
 
 MODEL=$(nvram get productid)
 if [ "${MODEL:0:3}" == "GT-" ] || [ "$(nvram get swrt_rog)" == "1" ];then
@@ -51,9 +51,6 @@ softcenter_install() {
 			cd /jffs/softcenter/bin && ln -sf /usr/sbin/base64_encode base64_decode
 			cd /jffs/softcenter/bin && rm -rf versioncmp && ln -sf /usr/sbin/versioncmp versioncmp
 			cd /jffs/softcenter/bin && rm -rf resolveip && ln -sf /usr/sbin/resolveip resolveip
-		else
-			dbus set softcenter_api="1.1"
-			[ ! -L "/jffs/softcenter/bin/base64_decode" ] && cd /jffs/softcenter/bin && ln -sf base64_encode base64_decode
 		fi
 		cd /jffs/softcenter/scripts && ln -sf ks_app_install.sh ks_app_remove.sh
 		chmod 755 /jffs/softcenter/bin/*
