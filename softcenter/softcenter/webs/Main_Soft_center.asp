@@ -542,6 +542,7 @@ function init(cb) {
 	//只要一次获取成功，以后不在重新获取，知道页面刷新重入
 $(function() {
 	show_menu(menu_hook);
+	set_skin();
 	sc_load_lang("sc1");
 	$.ajax({
 		type: "GET",
@@ -579,6 +580,9 @@ $(function() {
 				db_softcenter_["softcenter_version"] = "0.0";
 			}
 			$("#spnCurrVersion").html("<em>" + db_softcenter_["softcenter_version"] + "</em>");
+			if(isEva)
+			$('#github').html('机体编号：<i><u>EVA01</u></i> </a><br/>技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Project项目： <a href ="https://github.com/SWRT-dev/' + giturl +'" target="_blank"> <i><u>SWRT补完计划</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRT补完委员会</i></a>')
+			else
 			$('#github').html('论坛技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Github项目： <a href ="https://github.com/SWRT-dev/' + giturl +'" target="_blank"> <i><u>https://github.com/SWRT-dev</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRTdev</i></a>')
 			var jff2_scripts="<% nvram_get("jffs2_scripts"); %>";
 			if(jff2_scripts != 1){
@@ -818,9 +822,20 @@ function manipulate_softcenter_log(arg) {
 		}
 	});
 }
+function set_skin(){
+	if(isGundam){
+		$("#scapp").attr("scskin", 'Gundam');
+	}
+	if(isKimetsu){
+		$("#scapp").attr("scskin", 'Kimetsu');
+	}
+	if(isEva){
+		$("#scapp").attr("scskin", 'Eva');
+	}
+}
 </script>
 </head>
-<body>
+<body id="scapp" scskin="swrt">
 	<div id="TopBanner"></div>
 	<div id="Loading" class="popup_bg"></div>
 	<div id="softcenter_shade_pannel" class="popup_bar_bg_ks">

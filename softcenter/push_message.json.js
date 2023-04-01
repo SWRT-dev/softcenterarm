@@ -1,7 +1,7 @@
 {
 "title":"<em>软件中心&nbsp;for&nbsp;"+db_softcenter_["softcenter_arch"]+"&nbsp;platform</em>",
-"content1":"<b>软件中心：1.4.7已发布，软件中心停止支持api1.1</b>",
-"content2":"固件5.2.0:已发布,<font color='#1E90FF'>同时支持api版本1.1和1.5</font>",
+"content1":"<b>软件中心：1.4.8已发布，软件中心停止支持api1.1,固件版本低于5.2.1勿更新</b>",
+"content2":"固件5.2.1:已发布,<font color='#1E90FF'>修复软件中心cgi</font>",
 "content3":"<font color='#1E90FF'>交流反馈:&nbsp;&nbsp;</font>\
 <a href='https://github.com/SWRT-dev/softcenter' target='_blank'><em>1.软件中心GitHub项目</em></a>&nbsp;&nbsp;&nbsp;&nbsp;\
 <a href='https://t.me/merlinchat' target='_blank'><em>2.加入telegram群</em></a>&nbsp;&nbsp;&nbsp;&nbsp;\
