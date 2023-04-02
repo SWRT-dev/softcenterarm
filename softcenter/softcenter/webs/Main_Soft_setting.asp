@@ -10,145 +10,145 @@
 <title sclang>Softcenter - Offline installation</title>
 <link rel="stylesheet" type="text/css" href="index_style.css"/>
 <link rel="stylesheet" type="text/css" href="form_style.css"/>
+<link rel="stylesheet" type="text/css" href="usp_style.css"/>
+<link rel="stylesheet" type="text/css" href="ParentalControl.css">
+<link rel="stylesheet" type="text/css" href="css/icon.css">
+<link rel="stylesheet" type="text/css" href="css/element.css">
 <link rel="stylesheet" type="text/css" href="/res/softcenter.css">
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
+<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
+<script type="text/javascript" src="/dbconf?p=adm_&v=<% uptime(); %>"></script>
 <script type="text/javascript" src="/res/softcenter.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/js/i18n.js"></script>
-<style>
-input[type=button]:focus {
-	outline: none;
-}
-</style>
 <script>
-var _responseLen;
-var noChange = 0;
-String.prototype.myReplace = function(f, e){
-	var reg = new RegExp(f, "g"); 
-	return this.replace(reg, e); 
-}
-function init() {
-	show_menu(menu_hook);
-	set_skin();
+function init(menu_hook) {
+	show_menu();
 	sc_load_lang("sc1");
-	get_log();
 }
-function set_skin(){
-	if(isGundam){
-		$("#scapp").attr("scskin", 'Gundam');
-	}
-	if(isKimetsu){
-		$("#scapp").attr("scskin", 'Kimetsu');
-	}
-	if(isEva){
-		$("#scapp").attr("scskin", 'Eva');
-	}
-	if(isEva)
-	$('#github').html('机体编号：<i><u>EVA01</u></i> </a><br/>技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Project项目： <a href ="https://github.com/SWRT-dev/softcenter" target="_blank"> <i><u>SWRT补完计划</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRT补完委员会</i></a>')
-	else
-	$('#github').html('论坛技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Github项目： <a href ="https://github.com/SWRT-dev/softcenter" target="_blank"> <i><u>https://github.com/SWRT-dev</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRTdev</i></a>')
+function onSubmitCtrl(o, s) {
+	document.form.action_mode.value = s;
+	showLoading(7);
+	document.form.submit();
 }
-
+function reload_Soft_Center(){
+location.href = "/Main_Soft_center.asp";
+}
 function menu_hook(title, tab) {
 	tabtitle[tabtitle.length -1] = new Array("", dict["Software Center"], dict["Offline installation"]);
 	tablink[tablink.length -1] = new Array("", "Main_Soft_center.asp", "Main_Soft_setting.asp");
 }
 function upload_software() {
-	var filename = $("#file").val();
-	filename = filename.split('\\');
-	filename = filename[filename.length - 1];
-	var filelast = filename.split('.');
-	filelast = filelast[filelast.length - 1];
-	if (filelast != 'gz') {
-		alert(dict["File format is incorrect"]);
-		return false;
+	var fullPath = document.getElementById('ss_file').value;
+	if(!fullPath) {
+		return;
 	}
-	document.getElementById('file_info').style.display = "none";
-	var formData = new FormData();
-	formData.append(filename, $('#file')[0].files[0]);
-	//changeButton(true);
-	$.ajax({
-		url: '/_upload',
-		type: 'POST',
-		cache: false,
-		data: formData,
-		processData: false,
-		contentType: false,
-		complete: function(res) {
-			if (res.status == 200) {
-				var moduleInfo = {
-					"soft_name": filename,
-				};
-				document.getElementById('file_info').style.display = "block";
-				install_now(moduleInfo);
-			}
+	var startIndex = (fullPath.indexOf('\\') >= 0 ? fullPath.lastIndexOf('\\') : fullPath.lastIndexOf('/'));
+	var filename = fullPath.substring(startIndex);
+	if (filename.indexOf('\\') === 0 || filename.indexOf('/') === 0) {
+		filename = filename.substring(1);
+	}
+	if (/.*[\u0391-\uffe5]+.*$/.test(filename)) {
+		alert("错误：文件名中包含中文字符或符号！\n请更改文件名后重试！！");
+		isok=0;
+		return false;
+	}else{
+		if(filename.indexOf('tar.gz') != -1 ){
+			document.getElementById('file_info').style.display = "none";
+			document.getElementById('loadingicon').style.display = "block";
+			document.form.soft_name.value = filename;
+			document.form.enctype = "multipart/form-data";
+			document.form.encoding = "multipart/form-data";
+			document.form.action="ssupload.cgi?a=/tmp/"+filename;
+			console.log(filename);
+			document.form.submit();
+		}else{
+			console.log(filename);
+			alert("错误：离线安装包后缀错误！需要.tar.gz后缀！\n\n如果你是mac os x系统，safari浏览器下载tar.gz文件后被自动解压导致无法安装的，请关闭此项设置：safari的偏好设置-通用-下载后打开安全的文件。或者换用chrome浏览器，重新下载离线安装包文件！");
+			isok=0;
+			return false;
 		}
-	});
+	}
 }
-function install_now(moduleInfo) {
-	var id = parseInt(Math.random() * 100000000);
-	var postData = {"id": id, "method": "ks_tar_install.sh", "params": [], "fields": moduleInfo};
-	$.ajax({
-		type: "POST",
-		url: "/_api/",
-		data: JSON.stringify(postData),
-		dataType: "json",
-		success: function(response) {
-			if(response.result == id){
-				get_log(1);
-			}
-		}
-	});
+function upload_ok(isok) {
+	var info = E('file_info');
+	if(isok==1){
+		info.innerHTML="上传完成";
+		checkCmdRet();
+		setTimeout("start_install();", 100);
+		setTimeout("checkCmdRet();", 600);
+	} else {
+		info.innerHTML="上传失败";
+	}
+	info.style.display = "block";
+	E('loadingicon').style.display = "none";
 }
-function get_log(s) {
-	var retArea = E("soft_log_area");
+function start_install() {
+	document.form.action_mode.value = ' Refresh ';
+	document.form.action = "/applydb.cgi?p=soft";
+	document.form.action_script.value = "ks_tar_install.sh";
+	document.form.enctype = "";
+	document.form.encoding = "";
+	document.form.submit();
+}
+var _responseLen;
+var noChange = 0;
+function checkCmdRet(){
 	$.ajax({
-		url: '/_temp/soft_log.txt',
-		type: 'GET',
-		dataType: 'text',
-		cache: false,
-		success: function(response) {
-			if (response.search("XU6J03M6") != -1) {
-				retArea.value = response.myReplace("XU6J03M6", " ");
+		url: '/cmdRet_check.htm',
+		dataType: 'html',
+		
+		error: function(xhr){
+			setTimeout("checkCmdRet();", 1000);
+			},
+		success: function(response){
+			var retArea = E("log_content1");
+			if(response.search("XU6J03M6") != -1){
+				retArea.value = response.replace("XU6J03M6", " ");
 				retArea.scrollTop = retArea.scrollHeight;
-				if (s) {
-					setTimeout("window.location.reload()", 3000);
-				}
-				return true;
+				return false;
 			}
-			if (_responseLen == response.length) {
+			
+			if(_responseLen == response.length){
 				noChange++;
-			} else {
+			}else{
 				noChange = 0;
 			}
-			if (noChange > 4000) {
-				//tabSelect("app1");
+			if(noChange > 500){
 				return false;
-			} else {
-				setTimeout("get_log(1);", 100); //100 is radical but smooth!
+			}else{
+				setTimeout("checkCmdRet();", 250);
 			}
+			
 			retArea.value = response;
 			retArea.scrollTop = retArea.scrollHeight;
 			_responseLen = response.length;
-		},
-		error: function(xhr, status, error) {
-			if (s) {
-				E("soft_log_area").value = dict["Failed to load log file"];
-			}
 		}
 	});
 }
 </script>
 </head>
-<body id="scapp" scskin="swrt" onload="init();">
+<body onload="init();">
 	<div id="TopBanner"></div>
 	<div id="Loading" class="popup_bg"></div>
+	<iframe name="hidden_frame" id="hidden_frame" src="" width="0" height="0" frameborder="0"></iframe>
+	<form method="POST" name="form" action="" target="hidden_frame">
+	<input type="hidden" name="current_page" value="Main_Soft_setting.asp"/>
+	<input type="hidden" name="next_page" value="Main_Soft_setting.asp"/>
+	<input type="hidden" name="group_id" value=""/>
+	<input type="hidden" name="modified" value="0"/>
+	<input type="hidden" name="action_mode" value=""/>
+	<input type="hidden" name="action_script" value=""/>
+	<input type="hidden" name="action_wait" value=""/>
+	<input type="hidden" name="first_time" value=""/>
+	<input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>"/>
+	<input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>"/>
+	<input type="hidden" id="soft_name" name="soft_name" value=""/>
 	<table class="content" align="center" cellpadding="0" cellspacing="0">
 		<tr>
 			<td width="17">&nbsp;</td>
@@ -186,16 +186,18 @@ function get_log(s) {
 												<th><a sclang class="hintstyle" href="javascript:void(0);" onclick="openssHint(24)">Offline installation</a></th>
 												<td>
 													<input sclang type="button" id="upload_btn" class="button_gen" onclick="upload_software();" value="Upload"/>
-													<input style="color:#FFCC00;*color:#000;width: 200px;" id="file" type="file" name="file"/>
+													<input style="color:#FFCC00;*color:#000;width: 200px;" id="ss_file" type="file" name="file"/>
 													<img id="loadingicon" style="margin-left:5px;margin-right:5px;display:none;" src="/images/InternetScan.gif">
 													<span sclang id="file_info" style="display:none;">Done</span>
 												</td>
 											</tr>
-										</table>
-										<div id="log_content" class="soft_setting_log">
-											<textarea cols="63" rows="40" wrap="on" readonly="readonly" id="soft_log_area" class="soft_setting_log1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                                    	</table>
+                                    	<div id="log_content" style="margin-top:10px;display: block;">
+											<textarea cols="63" rows="40" wrap="off" readonly="readonly" id="log_content1"></textarea>
 										</div>
-										<div class="SCBottom" id="github">
+										<div class="SCBottom">
+											<br/>论坛技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>www.right.com.cn</u></i> </a> <br/>
+											Copyright：  <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRTdev</i></a>
 										</div>
 									</td>
 								</tr>
@@ -207,7 +209,10 @@ function get_log(s) {
 			</td>
 		</tr>
 	</table>
+	</form>
 	</td>
 	<div id="footer"></div>
 </body>
 </html>
+
+

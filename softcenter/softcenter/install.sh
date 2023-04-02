@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # Copyright (C) 2021-2023 SWRTdev
-
+eval $(dbus export softcenter_firmware_version)
+alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】:'
 MODEL=$(nvram get productid)
 if [ "${MODEL:0:3}" == "GT-" ] || [ "$(nvram get swrt_rog)" == "1" ];then
 	ROG=1
@@ -9,6 +10,12 @@ elif [ "${MODEL:0:3}" == "TUF" ] || [ "$(nvram get swrt_tuf)" == "1" ];then
 	TUF=1
 fi
 softcenter_install() {
+	if [ "$softcenter_firmware_version" = "" -o "$(versioncmp 5.2.1 $softcenter_firmware_version)" = "-1" ]; then
+		echo_date "固件版本过低无法安装"
+		rm -fr /tmp/softcenter* >/dev/null 2>&1
+		rm -fr /tmp/upload/softcenter* >/dev/null 2>&1
+		exit 0
+	fi
 	if [ -d "/tmp/softcenter" ]; then
 		# make some folders
 		mkdir -p /jffs/configs/dnsmasq.d
