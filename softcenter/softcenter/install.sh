@@ -10,7 +10,7 @@ elif [ "${MODEL:0:3}" == "TUF" ] || [ "$(nvram get swrt_tuf)" == "1" ];then
 	TUF=1
 fi
 softcenter_install() {
-	if [ "$softcenter_firmware_version" = "" -o "$(versioncmp 5.2.1 $softcenter_firmware_version)" = "-1" ]; then
+	if [ "$softcenter_firmware_version" = "" -o "$(versioncmp 5.2.2 $softcenter_firmware_version)" = "-1" ]; then
 		echo_date "固件版本过低无法安装"
 		rm -fr /tmp/softcenter* >/dev/null 2>&1
 		rm -fr /tmp/upload/softcenter* >/dev/null 2>&1

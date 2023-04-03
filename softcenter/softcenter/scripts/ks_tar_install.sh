@@ -1,4 +1,6 @@
-# Copyright (C) 2021-2022 SWRTdev
+#!/bin/sh
+
+# Copyright (C) 2021-2023 SWRTdev
 
 source /jffs/softcenter/scripts/base.sh
 eval $(dbus export soft)
@@ -7,12 +9,8 @@ alias echo_date='echo 【$(date +%Y年%m月%d日\ %X)】:'
 MODULE_TAR=$soft_name
 MODULE_PREFIX=$(echo "${MODULE_TAR}"|sed 's/.tar.gz//g'|awk -F "_" '{print $1}'|awk -F "-" '{print $1}')
 MODULE_NAME=${MODULE_PREFIX}
+TARGET_DIR=/tmp/upload
 
-if [ -n "$SCAPI" ];then
-	TARGET_DIR=/tmp/upload
-else
-	TARGET_DIR=/tmp
-fi
 #base model, not odmpid
 MODEL=$(nvram get productid)
 ARCH_SUFFIX=$softcenter_arch
@@ -132,7 +130,7 @@ install_tar(){
 	if [ -f ${TARGET_DIR}/${MODULE_TAR} ];then
 		local _SIZE=$(ls -lh $TARGET_DIR/${MODULE_TAR}|awk '{print $5}')
 		echo_date "${TARGET_DIR}目录下检测到上传的离线安装包${MODULE_TAR}，大小：${_SIZE}"
-		[ -n "$SCAPI" ] && mv /tmp/upload/${MODULE_TAR} /tmp
+		mv /tmp/upload/${MODULE_TAR} /tmp
 		jffs_space
 		echo_date "尝试解压离线安装包离线安装包"
 		rm -rf /tmp/${MODULE_NAME} >/dev/null 2>&1
@@ -233,11 +231,6 @@ install_tar(){
 	fi
 	clean 0
 }
-if [ -z "$SCAPI" ];then
-	echo " " > /tmp/syscmd.log
-	install_tar > /tmp/syscmd.log
-else
-	echo " " > /tmp/upload/soft_log.txt
-	http_response "$1"
-	install_tar > /tmp/upload/soft_log.txt
-fi
+echo " " > /tmp/upload/soft_log.txt
+http_response "$1"
+install_tar > /tmp/upload/soft_log.txt
