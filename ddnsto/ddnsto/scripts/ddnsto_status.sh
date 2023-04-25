@@ -1,12 +1,15 @@
 #! /bin/sh
 source /jffs/softcenter/scripts/base.sh
+eval $(dbus export ddnsto)
 ddnsto_status=`ps | grep -w ddnsto | grep -cv grep`
-ddnsto_pid=`ps | grep -w ddnsto | grep -v grep | awk '{print $1}'`
+ddnsto_pid=`pidof ddnsto`
 ddnsto_version=`/jffs/softcenter/bin/ddnsto -v`
 ddnsto_route_id=`/jffs/softcenter/bin/ddnsto -w | awk '{print $2}'`
-if [ "$ddnsto_status"x = "2"x ];then
-    echo 进程运行正常！版本：${ddnsto_version} 路由器ID：${ddnsto_route_id} （PID：$ddnsto_pid） > /tmp/.ddnsto.log
+if [ "$ddnsto_status" == "2" ];then
+	RESP="{\\\"version\\\": \\\"$ddnsto_version\\\",\\\"status\\\":1,\\\"router_id\\\":\\\"$ddnsto_route_id\\\", \\\"pid\\\":\\\"$ddnsto_pid\\\"}"
 else
-    echo \<em\>【警告】：进程未运行！\<\/em\> 版本：${ddnsto_version} 路由器ID：${ddnsto_route_id} > /tmp/.ddnsto.log
+	RESP="{\\\"version\\\": \\\"$ddnsto_version\\\",\\\"status\\\":0,\\\"router_id\\\":\\\"$ddnsto_route_id\\\", \\\"pid\\\":\\\"$ddnsto_pid\\\"}"
 fi
+
+http_response "${RESP}"
 

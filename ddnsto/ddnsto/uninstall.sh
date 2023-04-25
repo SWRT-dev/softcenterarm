@@ -3,11 +3,10 @@ eval `dbus export ddnsto_`
 source /jffs/softcenter/scripts/base.sh
 MODULE=ddnsto
 cd /tmp
-killall ddnsto || true
-rm -rf /jffs/softcenter/init.d/S70ddnsto.sh
+killall ddnsto >/dev/null 2>&1
+find /jffs/softcenter/init.d/ -name "*ddnsto.sh*"|xargs rm -rf >/dev/null 2>&1
 rm -rf /jffs/softcenter/bin/ddnsto
 rm -rf /jffs/softcenter/res/icon-ddnsto.png
-rm -rf /jffs/softcenter/res/ddnsto_check.html
 rm -rf /jffs/softcenter/scripts/ddnsto_config.sh
 rm -rf /jffs/softcenter/scripts/ddnsto_status.sh
 rm -rf /jffs/softcenter/webs/Module_ddnsto.asp
