@@ -22,27 +22,36 @@ __valid_ip() {
 	local format_6=$(echo "$1" | grep -Eo '^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*')
 	if [ -n "$format_4" ] && [ -z "$format_6" ]; then
 		echo "$format_4"
+		return 0
 	elif [ -z "$format_4" ] && [ -n "$format_6" ]; then
 		echo "$format_6"
+		return 0
 	else
 		echo ""
+		return 1
 	fi
 }
 
 __resolve_ip() {
 	# nslookup get only ipv4 address
 	local SERVER_IP=$(nslookup "$1" ${aliddns_dns} | sed '1,4d' | awk '{print $3}' | grep -v : | awk 'NR==1{print}' 2>/dev/null)
-	local SERVER_IP=$(__valid_ip ${SERVER_IP})
+	SERVER_IP=$(__valid_ip ${SERVER_IP})
 	if [ "$?" == "0" ]; then
-		# success resolved ipv4
+		# success resolved ipv4 or ipv6
 		echo "${SERVER_IP}"
+		return 0
 	else
-		# resolve failed or ipv6
+		# resolve failed
 		echo ""
+		return 1
 	fi
 }
 
 start_update() {
+	local wanifname=$(nvram get wan0_ifname)
+	if [ "$(nvram get wan0_proto)" == "pppoe" ];then
+		wanifname="ppp0"
+	fi
 	#get resovled ip
 	case "${aliddns_name}" in
 		\*)
@@ -59,22 +68,22 @@ start_update() {
 	# get public ip
 	case "$aliddns_comd" in
 		1)
-			ip=$(curl -s whatismyip.akamai.com 2>&1 | grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | grep -v "Terminated")
+			ip=$(curl -s --interface $wanifname whatismyip.akamai.com 2>&1 | grep -v "Terminated")
 			# incase user modify
-			dbus set aliddns_curl="curl -s whatismyip.akamai.com"
+			dbus set aliddns_curl="curl -s --interface $wanifname whatismyip.akamai.com"
 		;;
 		2)
-			ip=$(curl -s ip.clang.cn 2>&1 | grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | grep -v "Terminated")
+			ip=$(curl -s --interface $wanifname ip.clang.cn 2>&1 | grep -v "Terminated")
 			# incase user modify
-			dbus set aliddns_curl="curl -s ip.clang.cn"
+			dbus set aliddns_curl="curl -s --interface $wanifname ip.clang.cn"
 		;;
 		3)
-			ip=$(curl -s whatismyip.akamai.com 2>&1 | grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | grep -v "Terminated")
+			ip=$(curl -s whatismyip.akamai.com 2>&1 | grep -v "Terminated")
 			# incase user modify
 			dbus set aliddns_curl="curl -s whatismyip.akamai.com"
 		;;
 		4)
-			ip=$(curl -s ip.clang.cn 2>&1 | grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | grep -v "Terminated")
+			ip=$(curl -s ip.clang.cn 2>&1 | grep -v "Terminated")
 			# incase user modify
 			dbus set aliddns_curl="curl -s ip.clang.cn"
 		;;
@@ -126,7 +135,7 @@ start_update() {
 		do
 			case $c in
 				[a-zA-Z0-9._-]) out="$out$c" ;;
-				*) out="$out$(printf '%%%02X' "'$c")" ;;
+				*) out="$out$(printf '%%%02X' "'$c'")" ;;
 			esac
 		done
 		echo -n $out
@@ -147,7 +156,7 @@ start_update() {
 	}
 	
 	query_recordid() {
-		send_request "DescribeSubDomainRecords" "SignatureMethod=HMAC-SHA1&SignatureNonce=$timestamp&SignatureVersion=1.0&SubDomain=$aliddns_name1.$aliddns_domain&Timestamp=$timestamp&Type=A"
+		send_request "DescribeSubDomainRecords&DomainName=$aliddns_domain" "SignatureMethod=HMAC-SHA1&SignatureNonce=$timestamp&SignatureVersion=1.0&SubDomain=$aliddns_name1.$aliddns_domain&Timestamp=$timestamp&Type=A"
 	}
 	
 	update_record() {
