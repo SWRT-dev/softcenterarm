@@ -1,7 +1,7 @@
 {
 "title":"<em>软件中心&nbsp;for&nbsp;"+db_softcenter_["softcenter_arch"]+"&nbsp;platform</em>",
 "content1":"<b>软件中心：1.4.9已发布，软件中心停止支持api1.1,固件版本低于5.2.2勿更新</b>",
-"content2":"<em>📢</em>RT-AX86U PRO 前30名到手价999元,详询客服 🛒 <a href='https://s.click.taobao.com/AJOafGu' target='_blank'><em>点此链接购买</em></a>&nbsp;&nbsp;\
+"content2":"<em>📢</em>GT-AX6000 到手价1949元,送12期免息,详询客服 🛒 <a href='https://s.click.taobao.com/PMxByFu' target='_blank'><em>点此链接购买</em></a>&nbsp;&nbsp;\
 <em>📢</em>RT-AX82U 618到手价489元,详询客服 🛒 <a href='https://item.taobao.com/item.htm?id=623516166929' target='_blank'><em>点此链接购买</em></a>",
 "content3":"<font color='#1E90FF'>交流反馈:&nbsp;&nbsp;</font>\
 <a href='https://github.com/SWRT-dev/softcenter' target='_blank'><em>1.软件中心GitHub项目</em></a>&nbsp;&nbsp;&nbsp;&nbsp;\
