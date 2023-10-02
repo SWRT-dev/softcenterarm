@@ -1,5 +1,5 @@
 {
-"title":"<em>Software Center&nbsp;for&nbsp;"+db_softcenter_["softcenter_arch"]+"&nbsp;platform</em>",
+"title":"<em>Software Center&nbsp;for&nbsp;"+db_softcenter_["softcenter_arch"]+"&nbsp;platform&nbsp;-&nbsp;by&nbsp;SWRTdev</em>",
 "content1":"<b>Software Center: </b>1.4.9,<font color='#1E90FF'>&nbsp;softcenter dropped support for api1.1, please do not update when the firmware version is lower than 5.2.2</font>",
 "content2":"New firmware 5.2.3 has been released: <a href='https://www.swrt.site/Changelog' target='_blank'><em>Changelog</em></a>",
 "content3":"<font color='#1E90FF'>Feedback:&nbsp;&nbsp;</font>\

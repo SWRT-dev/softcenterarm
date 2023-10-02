@@ -1,8 +1,8 @@
 {
-"title":"<em>软件中心&nbsp;for&nbsp;"+db_softcenter_["softcenter_arch"]+"&nbsp;platform</em>",
+"title":"<em>软件中心&nbsp;for&nbsp;"+db_softcenter_["softcenter_arch"]+"&nbsp;platform&nbsp;-&nbsp;by&nbsp;SWRTdev</em>",
 "content1":"<b>软件中心：1.4.9已发布，软件中心停止支持api1.1,固件版本低于5.2.2勿更新</b>",
-"content2":"<em>📢</em>RT-AX86U PRO 领券1499元,详询客服 🛒 <a href='https://s.click.taobao.com/24VqaFu' target='_blank'><em>点此链接购买</em></a>&nbsp;&nbsp;\
-<em>📢</em>RT-AX82U 到手价489元,详询客服 🛒 <a href='https://item.taobao.com/item.htm?id=623516166929' target='_blank'><em>点此链接购买</em></a>",
+"content2":"<em>📢</em>双2.5G华硕天选路由器 🛒 <a href='https://s.click.taobao.com/q8tFi8u' target='_blank'><em>点此链接购买</em></a>&nbsp;&nbsp;\
+<em>📢</em>双2.5G华硕小旋风PRO 🛒 <a href='https://s.click.taobao.com/jISFi8u' target='_blank'><em>点此链接购买</em></a>",
 "content3":"<font color='#1E90FF'>交流反馈:&nbsp;&nbsp;</font>\
 <a href='https://github.com/SWRT-dev/softcenter' target='_blank'><em>1.软件中心GitHub项目</em></a>&nbsp;&nbsp;&nbsp;&nbsp;\
 <a href='https://t.me/merlinchat' target='_blank'><em>2.加入telegram群</em></a>&nbsp;&nbsp;&nbsp;&nbsp;\
