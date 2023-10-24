@@ -21,3 +21,6 @@ Changelog
 1.1.5
 	- update	update UnblockNeteaseMusic to 0.2.12
 
+1.2.0
+	- update	update UnblockNeteaseMusic to 0.2.13a
+
