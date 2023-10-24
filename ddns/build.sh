@@ -1,7 +1,7 @@
 #!/bin/sh
 
 MODULE="ddns"
-VERSION="0.1"
+VERSION="0.2"
 TITLE="多ddns合一"
 DESCRIPTION="支持Alidns(阿里云) Dnspod(腾讯云) Cloudflare 华为云 Callback"
 HOME_URL="Module_ddns.asp"

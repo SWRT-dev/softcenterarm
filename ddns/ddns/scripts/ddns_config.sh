@@ -7,10 +7,11 @@ LOG_FILE=/tmp/upload/ddns_log.txt
 LANIP=$(nvram get lan_ipaddr)
 
 start_ddns(){
+	local interval
 	echo_date "开启ddns服务！"
-
+	interval=`expr $ddns_interval \* 60`
 	echo_date "运行ddns..."
-	TZ=UTC-8 /jffs/softcenter/bin/ddns-go -l $LANIP:9876 -f $ddns_interval -c /jffs/softcenter/bin/.ddns_go_config.yaml
+	TZ=UTC-8 /jffs/softcenter/bin/ddns-go -l $LANIP:9876 -f $interval -c /jffs/softcenter/bin/.ddns_go_config.yaml
 
 	if [ ! -L "/jffs/softcenter/init.d/S98ddns.sh" ]; then 
 		ln -sf /jffs/softcenter/scripts/ddns_config.sh /jffs/softcenter/init.d/S98ddns.sh

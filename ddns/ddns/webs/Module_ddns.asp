@@ -105,9 +105,10 @@ function init() {
 }
 function conf2obj(){
 	for (var i = 0; i < params_inp.length; i++) {
-		if(dbus[params_inp[i]]){
+		if(dbus[params_inp[i]])
 			E(params_inp[i]).value = dbus[params_inp[i]];
-		}
+		else
+			E(params_inp[i]).value = "10";
 	}
 	for (var i = 0; i < params_chk.length; i++) {
 		if(dbus[params_chk[i]]){
@@ -197,6 +198,8 @@ function generate_options(){
 		$("#ddns_interval").append("<option value='"  + i + "'>" + i + "</option>");
 		$("#ddns_interval").val(3);
 	}
+	$("#ddns_interval").append("<option value='"  + 60 + "'>" + 60 + "</option>");
+	$("#ddns_interval").val(3);
 }
 function hook_event(){
 	$("#ddns_enable").click(
@@ -322,7 +325,8 @@ function openurl(){
 										<div style="float:right; width:15px; height:25px;margin-top:10px"><img id="return_btn" onclick="reload_Soft_Center();" align="right" style="cursor:pointer;position:absolute;margin-left:-30px;margin-top:-25px;" title="返回软件中心" src="/images/backprev.png" onMouseOver="this.src='/images/backprevclick.png'" onMouseOut="this.src='/images/backprev.png'"></img></div>
 										<div style="margin:30px 0 10px 5px;" class="splitLine"></div>
 										<div style="margin-left:5px;" id="head_illustrate">
-											<li><em>ddns</em>是一款支持Alidns(阿里云) Dnspod(腾讯云) Cloudflare 华为云解决方案的插件。</li>
+											<li><em>ddns</em>是一款简单好用的DDNS。支持ipv4和/或ipv6自动更新域名解析到公网IP(支持<em>阿里云、腾讯云、Dnspod、Cloudflare、Callback、华为云、百度云、Porkbun、GoDaddy、Google Domain</em>) 。</li>
+											<li><a href="https://github.com/jeessy2/ddns-go" target="_blank" ><i><u>使用教程</u></i></a></li>
 										</div>
 										<div id="ddns_switch" style="margin:5px 0px 0px 0px;">
 											<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
@@ -372,7 +376,7 @@ function openurl(){
 												<tr id="interval_tr">
 													<th>检查周期</th>
 													<td>
-														<select style="width:40px;margin:0px 0px 0px 2px;" id="ddns_interval" name="ddns_interval" class="input_option"></select> min
+														<select style="width:40px;margin:0px 0px 0px 2px;" id="ddns_interval" name="ddns_interval" class="input_option"></select> 分钟
 													</td>
 												</tr>
 											</table>
