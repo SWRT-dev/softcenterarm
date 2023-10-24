@@ -2,7 +2,7 @@
 
 
 MODULE=alist
-VERSION=1.1.0
+VERSION=1.9.1
 TITLE="Alist文件列表"
 DESCRIPTION="一款支持多种存储的目录文件列表程序，支持 web 浏览与 webdav，后端基于gin，前端使用react。"
 HOME_URL=Module_alist.asp

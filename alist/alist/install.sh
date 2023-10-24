@@ -39,7 +39,7 @@ fi
 echo_date "设置插件默认参数..."
 dbus set alist_version="$(cat $DIR/version)"
 dbus set softcenter_module_alist_version="$(cat $DIR/version)"
-dbus set softcenter_module_alist_description="一款支持多种存储的目录文件列表程序，支持 web 浏览与 webdav，后端基于gin，前端使用react。"
+dbus set softcenter_module_alist_description="一款支持多种存储的目录文件列表程序，使用 Gin 和 Solidjs。"
 dbus set softcenter_module_alist_install=1
 dbus set softcenter_module_alist_name=alist
 dbus set softcenter_module_alist_title="Alist文件列表"
@@ -58,6 +58,10 @@ if [ "$alist_key_file" == "" ];then
 	dbus set alist_key_file="/etc/key.pem"
 fi
 
+if [ "$alist_enable" == "1" ];then
+	echo_date "重新启动alist插件！"
+	sh /jffs/softcenter/scripts/alist_config.sh boot_up >/dev/null 2>&1 &
+fi
 
 echo_date "alist插件安装完毕！"
 rm -fr /tmp/alist* >/dev/null 2>&1

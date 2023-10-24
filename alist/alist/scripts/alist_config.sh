@@ -8,6 +8,19 @@ LOG_FILE=/tmp/upload/alist_log.txt
 LOCK_FILE=/var/lock/alist.lock
 BASH=${0##*/}
 ARGS=$@
+#初始化配置变量
+configPort=5244
+configHttpsPort=5245
+configTokenExpiresIn=48
+cofigMaxConnections=0
+configSiteUrl=
+configDisableHttp=false
+configForceHttps=false
+configHttps=false
+configCertFile=''
+configKeyFile=''
+configDelayedStart=0
+configCheckSslCert=true
 
 set_lock(){
 	exec 233>${LOCK_FILE}
@@ -68,13 +81,6 @@ detect_running_status(){
 }
 
 makeConfig() {
-	configPort=5244
-	configTokenExpiresIn=48
-	configSiteUrl=
-	configHttps=false
-	configCertFile=''
-	configKeyFile=''
-
 	echo_date "生成alist配置文件到${AlistBaseDir}/config.json！"
 	
 	# 初始化端口
@@ -91,6 +97,42 @@ makeConfig() {
 		configTokenExpiresIn=${alist_token_expires_in}
 	fi
 	
+	#初始化最大并发连接数
+	if [ $(number_test ${alist_max_connections}) != "0" ]; then
+		dbus set alist_max_connections=${cofigMaxConnections}
+	else
+		cofigMaxConnections=${alist_max_connections}
+	fi
+
+	#初始化https端口
+	if [ $(number_test ${alist_https_port}) != "0" ]; then
+		dbus set alist_https_port=${configHttpsPort}
+	else
+		configHttpsPort=${alist_https_port}
+	fi
+
+	#初始化强制跳转https
+	if [ $(number_test ${alist_force_https}) != "0" ]; then
+		dbus set alist_force_https="0"
+	fi
+
+	#初始化强制跳转https
+	if [ $(number_test ${alist_force_https}) != "0" ]; then
+		dbus set alist_force_https="0"
+	fi
+
+  #	#初始化验证SSL证书
+  #	if [ "${alist_check_ssl_cert}" == "0" ]; then
+  #		configCheckSslCert=false
+  #	fi
+
+	#初始化延迟启动时间
+	if [ $(number_test ${alist_delayed_start}) != "0" ]; then
+		dbus set alist_delayed_start=0
+	else
+		configDelayedStart=${alist_delayed_start}
+	fi
+
 	# 静态资源CDN
 	local configCdn=$(dbus get alist_cdn)
 	if [ -n "${configCdn}" ]; then
@@ -184,6 +226,21 @@ makeConfig() {
 			fi
 		fi
 	fi
+	  #检查关闭http访问
+	if [ "${configHttps}" == "true" ]; then
+		if [ "${configHttpsPort}" == "${configPort}" ]; then
+			configHttps=false
+			configHttpsPort="-1"
+			echo_date "Alist 管理面板http和https端口相同，本次启动关闭https！"
+		else
+			if [ "${alist_force_https}" == "1" ]; then
+				echo_date "Alist 管理面板已开启强制跳转https。"
+				configForceHttps=true
+			fi
+		fi
+	else
+		configHttpsPort="-1"
+	fi
 
 	# 网站url只有在开启公网访问后才可用，且未开https的时候，网站url不能配置为https
 	# 格式错误的时候，需要清空，以免面板入口用了这个URL导致无法访问
@@ -222,7 +279,13 @@ makeConfig() {
 						dbus set alist_url_error=1
 					else
 						# 路由器中使用网站URL的话，还必须配置端口
-						local MATCH_5=$(echo "${alist_site_url}" | grep -Eo ":${configPort}$")
+						if [ -n "${MATCH_3}" ]; then
+							local rightPort=$configHttpsPort
+							local MATCH_5=$(echo "${alist_site_url}" | grep -Eo ":${configHttpsPort}$")
+						else
+							local rightPort=$configHttpsPort
+							local MATCH_5=$(echo "${alist_site_url}" | grep -Eo ":${configPort}$")
+						fi
 						if [ -z "${MATCH_5}" ]; then
 							echo_date "网站URL：${alist_site_url} 端口配置错误！"
 							echo_date "你需要为网站URL配置端口:${configPort}，不然会导致面alist部分功能出现问题！"
@@ -257,8 +320,6 @@ makeConfig() {
 
 	config='{
 			"force":false,
-			"address":"'${BINDADDR}'",
-			"port":'${configPort}',
 			"jwt_secret":"random generated",
 			"token_expires_in":'${configTokenExpiresIn}',
 			"site_url":"'${configSiteUrl}'",
@@ -276,11 +337,16 @@ makeConfig() {
 				},
 			"scheme":
 				{
-					"https":'${configHttps}',
+					"address":"'${BINDADDR}'",
+					"http_port":'${configPort}',
+					"https_port":'${configHttpsPort}',
+					"force_https":'${configForceHttps}',
 					"cert_file":"'${configCertFile}'",
-					"key_file":"'${configKeyFile}'"
+					"key_file":"'${configKeyFile}'",
+					"unix_file":""
 				},
 			"temp_dir":"/jffs/softcenter/alist/temp",
+			"bleve_dir":"/jffs/softcenter/alist/bleve",
 			"log":
 				{
 					"enable":false,
@@ -289,19 +355,22 @@ makeConfig() {
 					"max_backups":5,
 					"max_age":28,
 					"compress":false
-				}
+				},
+			"delayed_start": '${configDelayedStart}',
+			"max_connections":'${cofigMaxConnections}',
+			"tls_insecure_skip_verify": '${configCheckSslCert}'
 			}'
 	echo "${config}" >${AlistBaseDir}/config.json
 }
 
 #检查内存是否合规
 check_memory(){
-	local swap_size=$(free | grep Swap | awk '{print $2}');
+	local swap_size=$(free | grep Swap | awk '{print $2}')
 	echo_date "检查系统内存是否合规！"
 	if [ "$swap_size" != "0" ];then
 		echo_date "当前系统已经启用虚拟内存！容量：${swap_size}KB"
 	else
-		local memory_size=$(free | grep Mem | awk '{print $2}');
+		local memory_size=$(free | grep Mem | awk '{print $2}')
 		if [ "$memory_size" != "0" ];then
 			if [  $memory_size -le 750000 ];then
 				echo_date "插件启动异常！"
@@ -362,8 +431,17 @@ start() {
 	dbus_rm alist_memory_error
 	dbus_rm alist_memory_warn
 
-	# 2. check_memory
-	check_memory
+	# 2. system_check
+	if [ "${alist_disablecheck}" = "1" ]; then
+		echo_date "您已关闭系统检测功能，请自行留意路由器性能！"
+		echo_date "插件对路由器性能的影响请您自行处理！！！"
+	else
+		echo_date "=========================== 系统检测 ============================="
+		#2.1 memory_check
+		check_memory
+		echo_date "========================= 系统检测结束 ==========================="
+	fi
+
 
 	# 3. stop first
 	stop_process
@@ -441,10 +519,31 @@ open_port() {
 	if [ $(number_test ${alist_port}) != "0" ]; then
 		dbus set alist_port="5244"
 	fi
+	if [ $(number_test ${alist_https_port}) != "0" ]; then
+ 		dbus set alist_https_port="5245"
+ 	fi
+	# 开启IPV4防火墙端口
 	local MATCH=$(iptables -t filter -S INPUT | grep "alist_rule")
 	if [ -z "${MATCH}" ];then
-		echo_date "添加防火墙入站规则，打开alist端口：${alist_port}"
-		iptables -I INPUT -p tcp --dport ${alist_port} -j ACCEPT -m comment --comment "alist_rule" >/dev/null 2>&1
+		if [ "${configDisableHttp}" != "true" -a "${alist_open_http_port}" == "1"  ]; then
+			echo_date "添加防火墙入站规则，打开alist http 端口：${alist_port}"
+			iptables -I INPUT -p tcp --dport ${alist_port} -j ACCEPT -m comment --comment "alist_rule" >/dev/null 2>&1
+		fi
+		if [ "${alist_https}" == "1" -a "${alist_open_https_port}" == "1" ]; then
+			echo_date "添加防火墙入站规则，打开 alist https 端口： ${alist_https_port}"
+			iptables -I INPUT -p tcp --dport ${alist_https_port} -j ACCEPT -m comment --comment "alist_rule" >/dev/null 2>&1
+		fi
+	fi
+	# 开启IPV6防火墙端口
+	local v6tables=$(which ip6tables);
+	local MATCH6=$(ip6tables -t filter -S INPUT | grep "alist_rule")
+	if [ -z "${MATCH6}" ] && [ -n "${v6tables}" ]; then
+		if [ "${configDisableHttp}" != "true" -a "${alist_open_http_port}" == "1" ]; then
+			ip6tables -I INPUT -p tcp --dport ${alist_port} -j ACCEPT -m comment --comment "alist_rule" >/dev/null 2>&1
+		fi
+		if [ "${alist_https}" == "1" -a "${alist_open_https_port}" == "1" ]; then
+			ip6tables -I INPUT -p tcp --dport ${alist_https_port} -j ACCEPT -m comment --comment "alist_rule" >/dev/null 2>&1
+		fi
 	fi
 }
 
@@ -452,23 +551,31 @@ close_port(){
 	local IPTS=$(iptables -t filter -S | grep -w "alist_rule" | sed 's/-A/iptables -t filter -D/g')
 	if [ -n "${IPTS}" ];then
 		echo_date "关闭本插件在防火墙上打开的所有端口!"
-		iptables -t filter -S | grep -w "alist_rule" | sed 's/-A/iptables -t filter -D/g' > /tmp/clean.sh
-		chmod +x /tmp/clean.sh
-		sh /tmp/clean.sh > /dev/null 2>&1
-		rm /tmp/clean.sh
+		iptables -t filter -S | grep -w "alist_rule" | sed 's/-A/iptables -t filter -D/g' > /tmp/alist_clean.sh
+		chmod +x /tmp/alist_clean.sh
+		sh /tmp/alist_clean.sh > /dev/null 2>&1
+		rm /tmp/alist_clean.sh
 	fi
+	local v6tables=$(which ip6tables);
+	local IPTS6=$(ip6tables -t filter -S | grep -w "alist_rule" | sed 's/-A/ip6tables -t filter -D/g')
+	if [ -n "${IPTS6}" ] && [ -n "${v6tables}" ]; then
+		ip6tables -t filter -S | grep -w "alist_rule" | sed 's/-A/ip6tables -t filter -D/g' >/tmp/alist_clean.sh
+		chmod +x /tmp/alist_clean.sh
+		sh /tmp/alist_clean.sh >/dev/null 2>&1
+		rm /tmp/alist_clean.sh
+  fi
 }
 
-show_password(){
+random_password(){
 	# 1. 关闭server进程
 	# echo_date "查看密码前需要先关闭alist服务器主进程..."
 	# stop_process
 
 	# 2. 查询密码
-	echo_date "查询alist面板的用户和密码..."
-	/jffs/softcenter/bin/alist --data ${AlistBaseDir} admin >${AlistBaseDir}/admin.account 2>&1
-	local USER=$(cat ${AlistBaseDir}/admin.account | grep -E "^username" | awk '{print $2}')
-	local PASS=$(cat ${AlistBaseDir}/admin.account | grep -E "^password" | awk '{print $2}')
+	echo_date "重新生成alist面板的用户和随机密码..."
+	/jffs/softcenter/bin/alist --data ${AlistBaseDir} admin random >${AlistBaseDir}/admin.account 2>&1
+	local USER=$(cat ${AlistBaseDir}/admin.account | grep "username" | awk '{print $NF}')
+	local PASS=$(cat ${AlistBaseDir}/admin.account | grep "password" | awk '{print $NF}')
 	if [ -n "${USER}" -a -n "${PASS}" ]; then
 		echo_date "---------------------------------"
 		echo_date "alist面板用户：${USER}"
@@ -509,7 +616,10 @@ check_status(){
 case $1 in
 start)
 	if [ "${alist_enable}" == "1" ]; then
+	sleep 20 #延迟启动等待虚拟内存挂载
+		true >${LOG_FILE}
 		start | tee -a ${LOG_FILE}
+		echo XU6J03M16 >> ${LOG_FILE}
 		logger "[软件中心-开机自启]: Alist自启动成功！"
 	else
 		logger "[软件中心-开机自启]: Alist未开启，不自动启动！"
@@ -517,15 +627,22 @@ start)
 	;;
 boot_up)
 	if [ "${alist_enable}" == "1" ]; then
+		true >${LOG_FILE}
 		start | tee -a ${LOG_FILE}
+		echo XU6J03M16 >> ${LOG_FILE}
 	fi
 	;;
 start_nat)
-	alist_pid=$(pidof alist)
 	if [ "${alist_enable}" == "1" ]; then
-		logger "[软件中心-NAT重启]: 打开alist防火墙端口！"
-		close_port
-		open_port
+		if [ "${alist_publicswitch}" == "1" ]; then
+			logger "[软件中心-NAT重启]: 打开alist防火墙端口！"
+			sleep 10
+			close_port
+			sleep 2
+			open_port
+		else
+			logger "[软件中心-NAT重启]: Alist未开启公网访问，不打开湍口！"
+		fi
 	fi
 	;;
 stop)
@@ -550,12 +667,12 @@ web_submit)
 		start | tee -a ${LOG_FILE}
 	elif [ "${alist_enable}" == "3" ]; then
 		dbus set alist_enable=1
-		show_password | tee -a ${LOG_FILE}
+		random_password | tee -a ${LOG_FILE}
 	else
 		echo_date "停止alist！" | tee -a ${LOG_FILE}
 		stop_plugin | tee -a ${LOG_FILE}
 	fi
-	echo XU6J03M6 | tee -a ${LOG_FILE}
+	echo XU6J03M16 | tee -a ${LOG_FILE}
 	unset_lock
 	;;
 status)

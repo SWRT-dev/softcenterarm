@@ -37,7 +37,7 @@ a:focus {
 i {
     color: #FC0;
     font-style: normal;
-} 
+}
 .loadingBarBlock{
 	width:740px;
 }
@@ -87,12 +87,12 @@ var count_down;
 var _responseLen;
 var STATUS_FLAG;
 var noChange = 0;
-var params_check = ['alist_https', 'alist_publicswitch', 'alist_watchdog'];
-var params_input = ['alist_cert_file', 'alist_key_file', 'alist_port', 'alist_cdn', 'alist_token_expires_in', 'alist_site_url', 'alist_watchdog_time'];
+var params_check = ['alist_https', 'alist_publicswitch', 'alist_disablecheck', 'alist_watchdog', 'alist_force_https', 'alist_open_http_port', 'alist_open_https_port'];
+var params_input = ['alist_cert_file', 'alist_key_file', 'alist_port', 'alist_cdn', 'alist_token_expires_in', 'alist_site_url', 'alist_watchdog_time', 'alist_max_connections','alist_https_port','alist_delayed_start'];
 
 String.prototype.myReplace = function(f, e){
-	var reg = new RegExp(f, "g"); 
-	return this.replace(reg, e); 
+	var reg = new RegExp(f, "g");
+	return this.replace(reg, e);
 }
 
 function init() {
@@ -119,7 +119,6 @@ function get_dbus_data(){
 
 function pannel_access(){
 	if(dbus["alist_enable"] == "1"){
-		//var protocol = location.protocol;
 		if(E("alist_publicswitch").checked){
 			if(E("alist_https").checked){
 				protocol = "https:";
@@ -140,18 +139,81 @@ function pannel_access(){
 				hostname = hostname.replace('.tocmcc.cn','-alist.tocmcc.cn');
 			}
 
-			webUiHref = protocol + "//" + hostname;
+			webUiHref = window.location.protocol + "//" + hostname;
 		}else{
-			webUiHref = protocol + "//" + location.hostname + ":" + dbus["alist_port"];
+			webUiHref = protocol + "//" + window.location.hostname + ":" + dbus["alist_port"];
 		}
 
-		if(!dbus["alist_url_error"] && dbus["alist_site_url"]){
-			webUiHref = dbus["alist_site_url"];
+		if(! dbus["alist_url_error"] && dbus["alist_publicswitch"] == 1 && dbus["alist_site_url"]){
+			/**
+			* 暂时不判断是否未内网ip访问面板
+			* 理论上内网IP访问面板需要用内网IP访问
+			* 用外网域名会导致无法访问。
+			*/
+// 			if(! isInnerIPFn()){
+				webUiHref = dbus["alist_site_url"];
+// 			}
 		}
+
 
 		E("fileb").href = webUiHref;
 		E("fileb").innerHTML = "访问 Alist 面板";
 	}
+}
+
+/*判断是否是内网IP*/
+function isInnerIPFn(){
+   // 获取当前页面url
+    var curPageUrl = window.location.href;
+    console.log('curPageUrl-0  '+curPageUrl);
+
+    var reg1 = /(http|ftp|https|www):\/\//g;//去掉前缀
+    curPageUrl =curPageUrl.replace(reg1,'');
+    // console.log('curPageUrl-1  '+curPageUrl);
+
+    var reg2 = /\:+/g;//替换冒号为一点
+    curPageUrl =curPageUrl.replace(reg2,'.');
+    // console.log('curPageUrl-2  '+curPageUrl);
+
+    curPageUrl = curPageUrl.split('.');//通过一点来划分数组
+    console.log(curPageUrl);
+
+
+    var ipAddress = curPageUrl[0]+'.'+curPageUrl[1]+'.'+curPageUrl[2]+'.'+curPageUrl[3];
+
+    var isInnerIp = false;//默认给定IP不是内网IP
+    var ipNum = getIpNum(ipAddress);
+    /**
+     * 私有IP：A类  10.0.0.0    -10.255.255.255
+     *       B类  172.16.0.0  -172.31.255.255
+     *       C类  192.168.0.0 -192.168.255.255
+     *       D类   127.0.0.0   -127.255.255.255(环回地址)
+     **/
+    var aBegin = getIpNum("10.0.0.0");
+    var aEnd = getIpNum("10.255.255.255");
+    var bBegin = getIpNum("172.16.0.0");
+    var bEnd = getIpNum("172.31.255.255");
+    var cBegin = getIpNum("192.168.0.0");
+    var cEnd = getIpNum("192.168.255.255");
+    var dBegin = getIpNum("127.0.0.0");
+    var dEnd = getIpNum("127.255.255.255");
+    isInnerIp = isInner(ipNum,aBegin,aEnd) || isInner(ipNum,bBegin,bEnd) || isInner(ipNum,cBegin,cEnd) || isInner(ipNum,dBegin,dEnd);
+//     console.log('是否是内网:'+isInnerIp);
+    return isInnerIp;
+}
+
+function getIpNum(ipAddress) {/*获取IP数*/
+    var ip = ipAddress.split(".");
+    var a = parseInt(ip[0]);
+    var b = parseInt(ip[1]);
+    var c = parseInt(ip[2]);
+    var d = parseInt(ip[3]);
+    var ipNum = a * 256 * 256 * 256 + b * 256 * 256 + c * 256 + d;
+    return ipNum;
+}
+
+function isInner(userIp,begin,end){
+    return (userIp>=begin) && (userIp<=end);
 }
 
 function conf2obj(){
@@ -248,23 +310,41 @@ function show_hide_element(){
 		E("al_key").style.display = "none";
 		E("al_url").style.display = "none";
 		E("al_cdn").style.display = "none";
+        	E("al_https_port").style.display = "none";
+        	E("al_force_https").style.display = "none";
+        	E("al_open_http_port").style.display = "none";
+        	E("al_open_https_port").style.display = "none";
 	}else{
 		E("al_url").style.display = "";
 		E("al_https").style.display = "";
-			E("al_cdn").style.display = "";
+		E("al_cdn").style.display = "";
+        	E("al_open_http_port").style.display = "";
 		if(E("alist_https").checked == false){
 			E("al_cert").style.display = "none";
 			E("al_key").style.display = "none";
+			E("al_https_port").style.display = "none";
+// 			E("al_disable_http").style.display = "none";
+			E("al_force_https").style.display = "none";
+            		E("al_open_https_port").style.display = "none";
 		}else{
 			E("al_cert").style.display = "";
 			E("al_key").style.display = "";
-		} 
+			E("al_https_port").style.display = "";
+// 			E("al_disable_http").style.display = "";
+			E("al_force_https").style.display = "";
+            		E("al_open_https_port").style.display = "";
+			/* if(E("alist_disable_http").checked == false){
+			    E("al_force_https").style.display = "";
+			}else{
+			    E("al_force_https").style.display = "none";
+			} */
+		}
 	}
 }
 
 function menu_hook(title, tab) {
-	tabtitle[tabtitle.length - 1] = new Array("", "Alist文件列表");
-	tablink[tablink.length - 1] = new Array("", "Module_alist.asp");
+	tabtitle[tabtitle.length - 1] = new Array("", "软件中心", "离线安装", "Alist文件列表");
+	tablink[tablink.length - 1] = new Array("", "Main_Soft_center.asp", "Main_Soft_setting.asp", "Module_alist.asp");
 }
 
 function register_event(){
@@ -321,7 +401,7 @@ function save(flag){
 		if (E(params_input[i])) {
 			db_alist[params_input[i]] = E(params_input[i]).value;
 		}
-	} 
+	}
 	var id = parseInt(Math.random() * 100000000);
 	var postData = {"id": id, "method": "alist_config.sh", "params": ["web_submit"], "fields": db_alist};
 	$.ajax({
@@ -347,8 +427,8 @@ function get_log(flag){
 		dataType: 'text',
 		success: function(response) {
 			var retArea = E("log_content");
-			if (response.search("XU6J03M6") != -1) {
-				retArea.value = response.myReplace("XU6J03M6", " ");
+			if (response.search("XU6J03M16") != -1) {
+				retArea.value = response.myReplace("XU6J03M16", " ");
 				E("ok_button").style.visibility = "visible";
 				retArea.scrollTop = retArea.scrollHeight;
 				if(flag == 1){
@@ -362,7 +442,7 @@ function get_log(flag){
 				return false;
 			}
 			setTimeout("get_log(" + flag + ");", 500);
-			retArea.value = response.myReplace("XU6J03M6", " ");
+			retArea.value = response.myReplace("XU6J03M16", " ");
 			retArea.scrollTop = retArea.scrollHeight;
 		},
 		error: function(xhr) {
@@ -489,8 +569,9 @@ function open_alist_hint(itemNum) {
 		_caption = "运行状态";
 	}
 	if (itemNum == 3) {
-		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;点击【查看密码】可以显示当前面板的账号和密码，请注意：如果你需要配置webdav，同样应该使用此用户名和密码。<br/><br/>"
-		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;点击【alist运行日志】可以实时查看alist程序的运行情况。"
+		statusmenu = "！！！请注意：v3.25版本后不允许查看密码，只能重新生成！<br/><br/>"
+		statusmenu += "&nbsp;&nbsp;&nbsp;&nbsp;点击【重置密码】可以重新生成当前面板的账号和密码，请注意：如果你需要配置webdav，同样应该使用此用户名和密码。<br/><br/>"
+		statusmenu += "&nbsp;&nbsp;&nbsp;&nbsp;点击【alist运行日志】可以实时查看alist程序的运行情况。"
 		_caption = "信息获取";
 	}
 	if (itemNum == 4) {
@@ -531,7 +612,7 @@ function open_alist_hint(itemNum) {
 		statusmenu += "&nbsp;&nbsp;&nbsp;&nbsp;6. 你也可以开启公网访问后填写https://ax86-alist.ddnsto.com到网站URL";
 		statusmenu += "</div>";
 		_caption = "说明：";
-		return overlib(statusmenu, OFFSETX, -160, OFFSETY, 10, RIGHT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, ''); 
+		return overlib(statusmenu, OFFSETX, -160, OFFSETY, 10, RIGHT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, '');
 	}
 	if (itemNum == 5) {
 		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;采用perp对alist进程进行实时进程守护，这比一些定时检查脚本更有效率，当然如果alist程序在你的路由器上运行良好，完全可以不使用进程守护。"
@@ -553,7 +634,7 @@ function open_alist_hint(itemNum) {
 		statusmenu += "此时你想跟朋友分享资源的时候，复制某个文件连接，该连接仍然是http://192.168.50.1:5244/xxxx。<br/><br/>"
 		statusmenu += "&nbsp;&nbsp;&nbsp;&nbsp;如果你给路由器配置了ddns访问路由器：https://ax86u.ddns.com:8443，那么可以将：https://ax86u.ddns.com:5224填写进去，然后你复制的文件连接就会是：https://ax86u.ddns.com:5244/xxxx<br/><br/>"
 		_caption = "网站URL";
-		return overlib(statusmenu, OFFSETX, -160, OFFSETY, 10, RIGHT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, ''); 
+		return overlib(statusmenu, OFFSETX, -160, OFFSETY, 10, RIGHT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, '');
 	}
 	if (itemNum == 9) {
 		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;alist运行在路由器上，如果访问alist面板，路由器上的alist程序会将面板所需要的网页、javaScript文件、图标等资源等发送给访问的设备，这会消耗不少的路由器cpu资源。<br/><br/>"
@@ -571,8 +652,33 @@ function open_alist_hint(itemNum) {
 		statusmenu += "&nbsp;&nbsp;&nbsp;&nbsp;证书Key文件路径(绝对路径)：<font color='#CC0066'>/etc/key.pem</font><br/><br/>";
 		statusmenu += "5️⃣如果你使用ddnsto内网穿透服务，请不要开启https选项！<br/><br/>";
 		_caption = "启用https：";
-		return overlib(statusmenu, OFFSETX, -30, OFFSETY, 10, RIGHT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, ''); 
+		return overlib(statusmenu, OFFSETX, -30, OFFSETY, 10, RIGHT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, '');
 	}
+
+	if (itemNum == 11) {
+		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;开启系统检测功能可以防止因对路由器性能理解不足而出现的各种异常情况"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;如果关闭系统检测，请确保可以理解并能处理路由器出现的各种异常情况"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;目前检测项目："
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;内存大小和虚拟内存挂载情况（物理内存低于1G，强制挂载虚拟内存）"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;已开启插件检测并提示"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;由于alist对路由器资源占用较多，所以强烈建议为路由器配置1G及以上的虚拟内存，以保证alist的稳定运行！"
+		_caption = "关闭系统检测";
+	}
+
+	if (itemNum == 12) {
+		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;同时最多的连接数(并发)，默认为0即不限制"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;对于一般的设备比如n1推荐10或者20"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;使用场景（例如打开图片模式会并发不是很好的设备就会崩溃）"
+		_caption = "最大并发连接数";
+	}
+
+	if (itemNum == 13) {
+		statusmenu = "&nbsp;&nbsp;&nbsp;&nbsp;是否检查SSL证书"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;开启后如使用的网站的证书出现问题（如未包含中级证书、证书过期、证书伪造等），将不能使用该服务"
+		statusmenu += "<br/><br/>&nbsp;&nbsp;&nbsp;&nbsp;关闭该选项请尽量在安全的网络环境下运行程序"
+		_caption = "是否检查SSL证书";
+	}
+
 
 	return overlib(statusmenu, OFFSETX, 10, OFFSETY, 10, RIGHT, STICKY, WIDTH, 'width', CAPTION, _caption, CLOSETITLE, '');
 
@@ -620,7 +726,7 @@ function mOut(obj){
 						<li><font color="#ffcc00">在此期间请不要刷新本页面，不然可能导致问题！</font></li>
 					</div>
 					<div style="margin-left:15px;margin-right:15px;margin-top:10px;outline: 1px solid #3c3c3c;overflow:hidden">
-						<textarea cols="50" rows="25" wrap="off" readonly="readonly" id="log_content" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="border:1px solid #000;width:99%; font-family:'Lucida Console'; font-size:11px;background:transparent;color:#FFFFFF;outline: none;padding-left:5px;padding-right:22px;overflow-x:hidden"></textarea>
+						<textarea cols="50" rows="25" wrap="off" readonly="readonly" id="log_content" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="border:1px solid #000;width:99%; font-family:'Lucida Console'; font-size:11px;background:transparent;color:#FFFFFF;outline: none;padding-left:5px;padding-right:22px;overflow-x:hidden;white-space:break-spaces;"></textarea>
 					</div>
 					<div id="ok_button" class="apply_gen" style="background:#000;visibility:hidden;">
 						<input id="ok_button1" class="button_gen" type="button" onclick="hideALLoadingBar()" value="确定">
@@ -636,7 +742,7 @@ function mOut(obj){
 					<div style="text-align: center;font-size: 18px;color: #99FF00;padding: 10px;font-weight: bold;">alist日志信息</div>
 					<div style="margin-left:15px"><i>🗒️此处展示alist程序的运行日志...</i></div>
 					<div style="margin-left:15px;margin-right:15px;margin-top:10px;outline: 1px solid #3c3c3c;overflow:hidden">
-						<textarea cols="50" rows="32" wrap="off" readonly="readonly" id="log_content_alist" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="border:1px solid #000;width:99%; font-family:'Lucida Console'; font-size:11px;background:transparent;color:#FFFFFF;outline: none;padding-left:5px;padding-right:22px;line-height:1.3;overflow-x:hidden"></textarea>
+						<textarea cols="50" rows="32" wrap="off" readonly="readonly" id="log_content_alist" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="border:1px solid #000;width:99%; font-family:'Lucida Console'; font-size:11px;background:transparent;color:#FFFFFF;outline: none;padding-left:5px;padding-right:22px;line-height:1.3;overflow-x:hidden;white-space:break-spaces;"></textarea>
 					</div>
 					<div id="ok_button_alist" class="apply_gen" style="background:#000;">
 						<input class="button_gen" type="button" onclick="hide_log_pannel()" value="返回主界面">
@@ -697,7 +803,7 @@ function mOut(obj){
 												<tr id="alist_info_tr" style="display: none;">
 													<th><a onmouseover="mOver(this, 3)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">信息获取</a></th>
 													<td>
-														<a type="button" style="vertical-align:middle;cursor:pointer;" class="ks_btn" href="javascript:void(0);" onclick="save(3)" style="margin-left:5px;">查看密码</a>
+														<a type="button" style="vertical-align:middle;cursor:pointer;" class="ks_btn" href="javascript:void(0);" onclick="save(3)" style="margin-left:5px;">重置密码</a>
 														<a type="button" class="ks_btn" href="javascript:void(0);" onclick="show_log_pannel()" style="margin-left:5px;">alist运行日志</a>
 													</td>
 												</tr>
@@ -716,6 +822,12 @@ function mOut(obj){
 														<td colspan="2">Alist - 设置</td>
 													</tr>
 												</thead>
+												<tr id="dashboard">
+													<th><a onmouseover="mOver(this, 11)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">关闭系统检测</a></th>
+													<td>
+														<input type="checkbox" id="alist_disablecheck" style="vertical-align:middle;">
+													</td>
+												</tr>
 												<!--<tr><th colspan="2"><em>基础设置</em></th></tr>-->
 												<tr id="dashboard">
 													<th><a onmouseover="mOver(this, 5)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">实时进程守护</a></th>
@@ -729,18 +841,38 @@ function mOut(obj){
 														<input type="checkbox" id="alist_publicswitch" onchange="show_hide_element();" style="vertical-align:middle;">
 													</td>
 												</tr>
-												<!--<tr><th colspan="2"><em>配置文件</em> -- <em style="color: gold;">【请查看<a href="https://alist.nn.ci/zh/" target="_blank"><em>Alist官方文档</em></a>，不懂勿动！！！】</th></tr>-->
+												<!--<tr>
+													<th><a onmouseover="mOver(this, 13)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">检查SSL证书</a></th>
+													<td>
+														<input type="checkbox" id="alist_check_ssl_cert" style="vertical-align:middle;">
+													</td>
+												</tr>
+												<tr><th colspan="2"><em>配置文件</em> -- <em style="color: gold;">【请查看<a href="https://alist.nn.ci/zh/" target="_blank"><em>Alist官方文档</em></a>，不懂勿动！！！】</th></tr>-->
 												<tr id="alist_port_tr">
-													<th><a onmouseover="mOver(this, 7)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">面板端口</a></th>
+													<th><a onmouseover="mOver(this, 7)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">面板http端口</a></th>
 													<td>
 														<input type="text" id="alist_port" style="width: 50px;" maxlength="5" class="input_3_table" autocorrect="off" autocapitalize="off" style="background-color: rgb(89, 110, 116);" value="5244">
+													    <span id="al_open_http_port"><input type="checkbox" id="alist_open_http_port" style="vertical-align:middle;;margin-left:50px;">开放公网端口</span>
+													</td>
+												</tr>
+												<tr>
+													<th>延迟启动</th>
+													<td>
+														<input onkeyup="this.value=this.value.replace(/[^0-9]{1,3}/,'')" style="width:30px;" type="text" class="input_ss_table" id="alist_delayed_start" name="alist_token_expires_in" maxlength="3" autocorrect="off" autocapitalize="off" value="0">
+														<span>秒</span>
 													</td>
 												</tr>
 												<tr>
 													<th>用户登录过期时间</th>
 													<td>
-														<input onkeyup="this.value=this.value.replace(/[^1-9][^0-9]*/,'')" style="width:30px;" type="text" class="input_ss_table" id="alist_token_expires_in" name="alist_token_expires_in" maxlength="4" autocorrect="off" autocapitalize="off" value="48">
+														<input onkeyup="this.value=this.value.replace(/[^1-9][^0-9]*/,'')" style="width:30px;" type="text" class="input_ss_table" id="alist_token_expires_in" name="alist_token_expires_in" maxlength="3" autocorrect="off" autocapitalize="off" value="48">
 														<span>小时</span>
+													</td>
+												</tr>
+												<tr>
+													<th><a onmouseover="mOver(this, 12)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">最大并发连接数</a></th>
+													<td>
+														<input onkeyup="this.value=this.value.replace(/\D/g,'')" style="width:30px;" type="text" class="input_ss_table" id="alist_max_connections" name="alist_max_connections" maxlength="3" autocorrect="off" autocapitalize="off" value="0">
 													</td>
 												</tr>
 												<tr id="al_url">
@@ -762,6 +894,25 @@ function mOut(obj){
 														<span id="warn_cert" style="color:red;margin-left:5px;vertical-align:middle;font-size:11px;"><span>
 													</td>
 												</tr>
+												<tr id="al_https_port">
+													<th><a onmouseover="mOver(this, 7)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">面板https端口</a></th>
+													<td>
+														<input type="text" id="alist_https_port" style="width: 50px;" maxlength="5" class="input_3_table" autocorrect="off" autocapitalize="off" style="background-color: rgb(89, 110, 116);" value="5245">
+													    <span id="al_open_https_port"><input type="checkbox" id="alist_open_https_port" style="vertical-align:middle;;margin-left:50px;">开放公网端口</span>
+													</td>
+												</tr>
+												<!-- <tr id="al_disable_http">
+													<th><a onmouseover="mOver(this, 10)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">禁用http服务</a></th>
+													<td>
+														<input type="checkbox" id="alist_disable_http" onchange="show_hide_element();" style="vertical-align:middle;" />
+													</td>
+												</tr> -->
+												<tr id="al_force_https">
+													<th><a onmouseover="mOver(this, 10)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">强制跳转https</a></th>
+													<td>
+														<input type="checkbox" id="alist_force_https" style="vertical-align:middle;" />
+													</td>
+												</tr>
 												<tr id="al_cert">
 													<th>证书公钥Cert文件 (绝对路径)</th>
 													<td>
@@ -773,7 +924,7 @@ function mOut(obj){
 													<td>
 													<input type="text" id="alist_key_file" style="width: 95%;" class="input_3_table" autocorrect="off" autocapitalize="off" style="background-color: rgb(89, 110, 116);" value="" placeholder="/tmp/etc/key.pem">
 													</td>
-												</tr> 
+												</tr>
 											</table>
 										</div>
 										<div id="alist_apply" class="apply_gen">
@@ -783,6 +934,7 @@ function mOut(obj){
 										</div>
 										<div style="margin: 10px 0 10px 5px;" class="splitLine"></div>
 										<div style="margin:10px 0 0 5px">
+											<li>建议挂载U盘并配合虚拟内存插件一起食用，口感更佳，否则可能会出现莫名的问题。</li>
 											<li>如有不懂，特别是alist配置文件的填写，请查看Alist官方文档<a href="https://alist.nn.ci/zh/" target="_blank"><em>点这里看文档</em></a></li>
 										</div>
 									</td>
@@ -798,4 +950,3 @@ function mOut(obj){
 	<div id="footer"></div>
 </body>
 </html>
-
