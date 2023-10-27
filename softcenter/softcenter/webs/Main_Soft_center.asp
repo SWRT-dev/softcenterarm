@@ -552,17 +552,15 @@ $(function() {
 		cache: false,
 		success: function(response) {
 			db_softcenter_ = response.result[0];
-			if(db_softcenter_["softcenter_server_tcode"] == "CN") {
+			if(db_softcenter_["softcenter_server_tcode"] == "CN")
 				db_softcenter_["softcenter_home_url"] = "https://sc.softcenter.site";
-			}
+			else if (db_softcenter_["softcenter_server_tcode"] == "NO")
+				db_softcenter_["softcenter_home_url"] = "https://no.paldier.com";
 			else
 				db_softcenter_["softcenter_home_url"] = "https://sc.paldier.com";
 			if(db_softcenter_["softcenter_arch"] == "mips"){
 				scarch="mips";
 				giturl="softcenter";
-			} else if (db_softcenter_["softcenter_arch"] == "armv7l"){
-				scarch="arm";
-				giturl="softcenterarm";
 			} else if (db_softcenter_["softcenter_arch"] == "armng"){
 				scarch="armng";
 				giturl="softcenterarmng";
