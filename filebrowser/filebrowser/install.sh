@@ -12,21 +12,22 @@ elif [ "$MODEL" == "TUF-AX3000" ] || [ "$(nvram get merlinr_tuf)" == "1" ] ;then
 fi
 
 filebrowser_pid=$(pidof filebrowser)
-if [ -n "filebrowser_pid" ];then
+if [ -n "$filebrowser_pid" ];then
 	echo_date 先关闭filebrowser，保证文件更新成功!
 	[ -f "/jffs/softcenter/scripts/filebrowser_start.sh" ] && sh /jffs/softcenter/scripts/filebrowser_start.sh stop
 fi
 
 echo_date 清理旧文件
-rm -rf /jffs/softcenter/scripts/filebrowser_start.sh
-rm -rf /jffs/softcenter/scripts/filebrowser_status.sh
+if [ -f "/jffs/softcenter/bin/filebrowser.db" ];then
+	echo_date 发现数据库文件，删除前拷贝至临时位置/tmp/bak/filebrowser.db，有需要请尽快备份并手动恢复
+	cp -rf /jffs/softcenter/bin/filebrowser.db /tmp/bak/filebrowser.db
+fi
+
+find /jffs/softcenter/scripts/ -name "filebrowser*.sh" | xargs rm -rf
 rm -rf /jffs/softcenter/webs/Module_filebrowser*
 rm -rf /jffs/softcenter/res/icon-filebrowser.png
 rm -rf /jffs/softcenter/bin/filebrowser
 rm -rf /jffs/softcenter/bin/filebrowser.db
-rm -rf /tmp/bin/filebrowser
-rm -rf /tmp/bin/filebrowser.db
-rm -rf /tmp/filebrowser.log
 find /jffs/softcenter/init.d/ -name "*filebrowser.sh" | xargs rm -rf
 echo_date 开始复制文件！
 cd /tmp
@@ -55,25 +56,18 @@ echo_date 创建一些二进制文件的软链接！
 	
 # 离线安装时设置软件中心内储存的版本号和连接
 echo_date 清除冗余数据
-dbus remove filebrowser_version_local
-dbus remove filebrowser_watchdog
-dbus remove filebrowser_port
-dbus remove filebrowser_publicswitch
-dbus remove filebrowser_delay_time
-dbus remove filebrowser_uploaddatabase
-dbus remove filebrowser_sslswitch
-dbus remove filebrowser_cert
-dbus remove filebrowser_key
-dbus remove softcenter_module_filebrowser_install
-dbus remove softcenter_module_filebrowser_version
-dbus remove softcenter_module_filebrowser_title
-dbus remove softcenter_module_filebrowser_description
+values=$(dbus list filebrowser_ | cut -d "=" -f 1)
+for value in $values
+do
+	dbus remove $value
+done
 echo_date 设置初始值
 CUR_VERSION=$(cat /tmp/filebrowser/version)
-dbus set filebrowser_version_local="$CUR_VERSION"
+dbus set filebrowser_version="$CUR_VERSION"
 dbus set softcenter_module_filebrowser_install="1"
 dbus set softcenter_module_filebrowser_version="$CUR_VERSION"
 dbus set softcenter_module_filebrowser_title="FileBrowser"
+dbus set softcenter_module_filebrowser_name="FileBrowser"
 dbus set softcenter_module_filebrowser_description="FileBrowser：您的可视化路由文件管理系统"
 echo_date 一点点清理工作...
 rm -rf /tmp/filebrowser* >/dev/null 2>&1

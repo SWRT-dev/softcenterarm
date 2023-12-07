@@ -2,25 +2,26 @@
 
 eval `dbus export frps_`
 source /jffs/softcenter/scripts/base.sh
-INI_FILE=/tmp/upload/.frps.ini
+BIN=/jffs/softcenter/bin/frps
+Conf_FILE=/tmp/upload/.frps.toml
 LOG_FILE=/tmp/upload/frps_log.txt
 LOCK_FILE=/var/lock/frps.lock
+PID_FILE=/var/run/frps.pid
 alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】:'
 mkdir -p /tmp/upload
+comment="Frps_rule"
+logFile_lnk=/tmp/upload/frps_lnk.log
 
 set_lock() {
 	exec 1000>"$LOCK_FILE"
 	flock -x 1000
 }
-
 unset_lock() {
 	flock -u 1000
-	rm -rf "$LOCK_FILE"
+	rm -f "$LOCK_FILE"
 }
-
 sync_ntp(){
-	# START_TIME=$(date +%Y/%m/%d-%X)
-	echo_date "尝试从ntp服务器：ntp1.aliyun.com 同步时间..."
+	echo_date "尝试从ntp服务器：ntp1.aliyun.com 同步时间"
 	ntpclient -h ntp1.aliyun.com -i3 -l -s >/tmp/ali_ntp.txt 2>&1
 	SYNC_TIME=$(cat /tmp/ali_ntp.txt|grep -E "\[ntpclient\]"|grep -Eo "[0-9]+"|head -n1)
 	if [ -n "${SYNC_TIME}" ];then
@@ -31,383 +32,405 @@ sync_ntp(){
 	fi
 }
 fun_nat_start(){
-	if [ "${frps_enable}" == "1" ];then
-		if [ ! -L "/jffs/softcenter/init.d/N95Frps.sh" ];then
-			echo_date "添加nat-start触发..."
-			ln -sf /jffs/softcenter/scripts/frps_config.sh /jffs/softcenter/init.d/N95Frps.sh
+	if [ "${_Flag_}" == "1" ];then
+		if [ ! -L "/jffs/softcenter/init.d/N99Frps.sh" ];then
+			echo_date "添加nat-start触发"
+			ln -sf /jffs/softcenter/scripts/frps_config.sh /jffs/softcenter/init.d/N99Frps.sh
 		fi
 	else
-		if [ -L "/jffs/softcenter/init.d/N95Frps.sh" ];then
-			echo_date "删除nat-start触发..."
-			rm -rf /jffs/softcenter/init.d/N95Frps.sh >/dev/null 2>&1
+		if [ -L "/jffs/softcenter/init.d/N99Frps.sh" ];then
+			echo_date "删除nat-start触发"
+			rm /jffs/softcenter/init.d/N99Frps.sh
 		fi
 	fi
 }
 fun_crontab(){
-    # 定时任务
-    if [ "${frps_enable}" == "1" ];then
-        if [ "${frps_common_cron_time}" == "0" ]; then
-		    cru d frps_monitor >/dev/null 2>&1
-        else
-            if [ "${frps_common_cron_hour_min}" == "min" ]; then
-                if [ "${frps_common_cron_type}" == "L1" ]; then
-                    echo_date "设置定时任务：每隔${frps_common_cron_time}分钟检查一次frps服务..."
-                    cru a frps_monitor "*/"${frps_common_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh watch"
-                elif [ "${frps_common_cron_type}" == "L2" ]; then
-                    echo_date "设置定时任务：每隔${frps_common_cron_time}分钟启动一次frps服务..."
-                    cru a frps_monitor "*/"${frps_common_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh start"
-                fi
-            elif [ "${frps_common_cron_hour_min}" == "hour" ]; then
-                if [ "${frps_common_cron_type}" == "L1" ]; then
-                    echo_date "设置定时任务：每隔${frps_common_cron_time}小时检查一次frps服务..."
-                    cru a frps_monitor "0 */"${frps_common_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh watch"
-                elif [ "${frps_common_cron_type}" == "L2" ]; then
-                    echo_date "设置定时任务：每隔${frps_common_cron_time}小时启动一次frps服务..."
-                    cru a frps_monitor "0 */"${frps_common_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh start"
-                fi
-            fi
-		    echo_date "定时任务设置完成！"
-	    fi
-    else
-        cru d frps_monitor >/dev/null 2>&1
+    if [ "${_Flag_}" == "0" ] || [ "${frps_cron_time}" == "0" ];then
+		if [ -n "$(cru l | grep frps_monitor)" ];then
+			echo_date "删除定时任务"
+			cru d frps_monitor
+		fi
+		return 1
     fi
-}
-logfile_link() {
-    # 生成frps运行日志文件链接，用户可能中途修改log路径，而原log仍存在导致链接不准，故每次都强制执行
-    if [ "${frps_enable}" == "1" ];then
-        if [ -n "${frps_common_log_file}" ];then
-            echo_date "创建运行日志文件读取链接..." 
-            ln -sf ${frps_common_log_file} /tmp/upload/frps_lnk.log
-        else
-            echo_date "未开启运行日志文件记录，删除文件链接..." 
-            rm -rf /tmp/upload/frps_lnk.log >/dev/null 2>&1
+	if [ "${frps_cron_hour_min}" == "min" ]; then
+        if [ "${frps_cron_type}" == "watch" ]; then
+            echo_date "设置定时任务：每隔 ${frps_cron_time} 分钟 检查 一次frps服务"
+            cru a frps_monitor "*/"${frps_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh watch"
+        elif [ "${frps_cron_type}" == "start" ]; then
+            echo_date "设置定时任务：每隔 ${frps_cron_time} 分钟 启动 一次frps服务"
+            cru a frps_monitor "*/"${frps_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh start"
+        fi
+    elif [ "${frps_cron_hour_min}" == "hour" ]; then
+        if [ "${frps_cron_type}" == "watch" ]; then
+            echo_date "设置定时任务：每隔 ${frps_cron_time} 小时 检查 一次frps服务"
+            cru a frps_monitor "0 */"${frps_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh watch"
+        elif [ "${frps_cron_type}" == "start" ]; then
+            echo_date "设置定时任务：每隔 ${frps_cron_time} 小时 启动 一次frps服务"
+            cru a frps_monitor "0 */"${frps_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frps_config.sh start"
         fi
     fi
 }
-    
-onstart() {
-	# 插件开启的时候同步一次时间
-	if [ "${frps_enable}" == "1" ];then
-		sync_ntp
+# 生成frps运行日志文件链接和目录
+logfile_prepare() {
+    if [ -n "${frps_common_log__to}" ];then
+        RUN_logFile=${frps_common_log__to}
+    else
+    # 使用追加参数时
+        local a b c
+        # For TOML
+        if [ -n "$(grep -w "log.to" ${Conf_FILE})" ];then
+            a=$(grep -w "log.to" ${Conf_FILE})
+            # 取右边起最后一个log.to前面的内容，是否包含注释符
+            if [ -z "$(echo "${a%%log.to*}" | grep "#")" ];then
+                # 取左边起第一个=后面的内容，并去除首空格
+                b=`echo "${a#*=}" | sed 's/^[ ]*//g'`
+            fi
+        # For YAML（无引号时可能有尾部空格，也要删除）
+        elif [ -n "$(grep -w "to:" ${Conf_FILE})" ];then
+            a=$(grep -w  "to:" ${Conf_FILE})
+            if [ -z "$(echo "${a%%to:*}" | grep "#")" ];then
+                b=`echo "${a#*to:}" | sed -e 's/^[ ]*//g' -e 's/[ ]*$//g'`
+            fi
+        # For JSON（不进行#符号检测）
+        elif [ -n "$(grep -w "\"to\":" ${Conf_FILE})" ];then
+            a=$(grep -w "\"to\":" ${Conf_FILE})
+            b=`echo "${a#*\"to\":}" | sed 's/^[ ]*//g'`
+        # For INI
+        elif [ -n "$(grep -w "log_file" ${Conf_FILE})" ];then
+            a=$(grep -w "log_file" ${Conf_FILE})
+            if [ -z "$(echo "${a%%log_file*}" | grep "#")" ];then
+                b=`echo "${a#*=}" | sed -e 's/^[ ]*//g' -e 's/[ ]*$//g'`
+            fi
+        fi
+		# 首字符是否是引号
+        if [ "${b:0:1}" == "\"" ];then
+            c=${b#*\"}
+            [ -n "${c%%\"*}" ] && RUN_logFile=${c%%\"*}
+        elif [ "${b:0:1}" == "'" ];then
+            c=${b#*\'}
+            [ -n "${c%%\'*}" ] && RUN_logFile=${c%%\'*}
+        else
+            [ -n "$b" ] && RUN_logFile=$b
+        fi
+    fi
+    # 确定 redirect_file，用于启动命令（若和配置指定的一致，启动时不清空，由frp接管保留时间）
+    # 若未配置日志路径，则什么也不记录；配置为/dev/null，无日志、仅记录标准输出/错误
+    if [ -z "${RUN_logFile}" -o "${RUN_logFile}" == "console" ];then
+        redirect_file=/dev/null
+		echo_date "所有运行日志及标准输出信息已关闭"
+	elif [ "${RUN_logFile}" == "/dev/null" ];then
+		redirect_file=/tmp/frps_std.log
+		echo_date "创建标准输出重定向文件读取链接"
+		true >"${redirect_file}"
+	else
+		mkdir -p "$(dirname "${RUN_logFile}")"
+		touch "${RUN_logFile}"
+		if [ "$?" != "0" ];then
+			redirect_file=/tmp/frps_std.log
+			echo_date "--->警告：配置的日志文件路径似乎无效/只读！" | tee "${redirect_file}"
+		else
+		    redirect_file=${RUN_logFile}
+			echo_date "创建运行日志文件（及标准输出信息）目录及读取链接"
+		fi
+    fi
+    ln -sf "${redirect_file}" ${logFile_lnk}
+}
+# 关闭进程（先常规，再使用信号9强制）
+onkill(){
+    local PID=$(pidof frps)
+    if [ -n "${PID}" ];then
+		start-stop-daemon -K -p ${PID_FILE} >/dev/null 2>&1
+		echo_date "停止当前 frps 主进程"
+		kill -9 "${PID}" >/dev/null 2>&1
 	fi
+	rm -f ${PID_FILE}
+}
+# 停止服务并清理
+onstop() {
+	echo_date "停止frps服务，并清理插件数据(保留日志)"
+	onkill
+	_Flag_=0; fun_crontab; fun_nat_start;
+    close_port
+    rm -f ${Conf_FILE}
+}
+# 因变量不能带 . 号，故dbus中frp参数相关的 . 用 __ 替代；在调用此函数时，frp参数名称，分3类：
+# 1.Toml字符串类，直接使用，并加双引号输出
+# 2.Toml布尔和整数，使用时，名称请附加 ..INT 后缀，在此处理后，并原样输出
+# 3.Toml数组，使用时请附加 ..ARR 后缀，网页端可 不加引号使用逗号或空格分隔 的简写方式，处理后，再加方括号输出
+add_cfg(){
+	local file="$1" ; shift
+	local o v f
+	for o in "$@" ; do
+		f=""
+		if [ -n "$(echo "$o" | grep "..INT")" ];then
+            f=1
+            o=${o//..INT/}
+		fi
+        if [ -n "$(echo "$o" | grep "..ARR")" ];then
+            f=2
+            o=${o//..ARR/}
+        fi
+		eval v=\$frps_common_${o//./__}
 
-	# 关闭frps进程
-	if [ -n "$(pidof frps)" ];then
-		echo_date "关闭当前frps进程..."
-		killall frps >/dev/null 2>&1
+		if [ -n "$v" ];then
+			[ "$f" == "" ] && echo "${o} = \"${v}\"" >>"$file"
+			[ "$f" == "1" ] && echo "${o} = ${v}" >>"$file"
+			if [ "$f" == "2" ];then
+                local T M
+                M=""
+                if [ "$o" == "allowPorts" ];then
+                    # 对allowPorts特殊，有大括号的情况和简写情况分别处理
+                    if [ -n "$(echo "$v" | grep "{" | grep "}")" ];then
+                        echo "${o} = [ ${v} ]" >>"$file"
+                    else
+                        v=${v//,/ }
+                        for T in $v ; do
+                        if [ -z "$(echo "$T" | grep "\-")" ];then
+                            T="{ single = ${T} }"
+                        else
+                            [ "${T%-*}" -ge "${T#*-}" ] && continue
+                            T="{ start = ${T%-*}, end = ${T#*-} }"
+                        fi
+                        [ -n "$M" ] && M="${M}, "
+                        M=$M$T
+                        done
+                        echo "${o} = [ ${M} ]" >>"$file"
+                    fi
+                else
+                    # 逗号替换为空格
+                    v=${v//,/ }
+                    # 查找单个的 * ，替换为 "*" 。
+                    if [ -n "$(echo "$v" | grep "^\* \| \* \| \*$")" ];then
+                        v="${v//\*/\"*\"}"
+                    fi
+                    [ "$v" == "*" ] && v=\"*\"
+                    for T in $v ; do    
+                    # 忽略单个的 ' 或 " 符。
+                    if [ "${T:0:1}" == "\"" -o "${T:0:1}" == "'" ] && [ "${#T}" == "1" ];then
+                        continue
+                    fi
+                    # 除首尾同是 ' 或同是 " 外，删除所有 ' 或 " ，并补全首尾的 " 。
+                    if [ "${T:0:1}" == "\"" -a "$(echo -n "$T" | tail -c 1)" == "\"" ] || [ "${T:0:1}" == "'" -a "$(echo -n "$T" | tail -c 1)" == "'" ];then
+                        true
+                    else
+                        T=${T//\'/}
+                        T=\"${T//\"/}\"
+                    fi
+                    # 用逗号+空格组合
+                    [ -n "$M" ] && M="${M}, "
+                    M=$M$T
+                    done
+                    echo "${o} = [${M}]" >>"$file"
+                fi
+            fi
+		fi
+	done
+}
+# 使iptables能作备注
+load_xt_comment(){
+    local CM=$(lsmod | grep xt_comment)
+	local OS=$(uname -r)
+	if [ -z "${CM}" -a -f "/lib/modules/${OS}/kernel/net/netfilter/xt_comment.ko" ];then
+		insmod /lib/modules/${OS}/kernel/net/netfilter/xt_comment.ko
+		echo_date "已加载xt_comment.ko内核模块"
 	fi
-	
-	# 查看及记录frps主程序版本
-	frps_bin_ver=$(/jffs/softcenter/bin/frps --version)
-	echo_date "当前插件frps主程序版本号：${frps_bin_ver}"
+}
+# 打开端口
+open_port(){
+    [ -z "${frps_ifopenport}" ] && return 1
+    [ -z "${frps_openports}" ] && [ -z "${frps_openports_u}" ] && return 1
+    
+    load_xt_comment
+    local port t_port u_port t_port_v6 u_port_v6
+    if [ -n "${frps_openports}" ]; then
+        for port in ${frps_openports}
+        do
+        [ "$port" -gt 65535 -o "$port" -lt 1 ] && echo_date "--->错误：端口 $port 非法" && continue
+        [ "${port:0:1}" == "0" ] && port=$(expr "$port" + 0)
+        if [ "${frps_ifopenport}" != "v6" ];then
+            iptables -I INPUT -p tcp --dport ${port} -m comment --comment "${comment}" -j ACCEPT >/dev/null 2>&1
+            [ -n "${t_port}" ] && t_port="${t_port} "
+            t_port="${t_port}${port}"
+        fi
+        if [ "${frps_ifopenport}" != "v4" ];then
+            ip6tables -I INPUT -p tcp --dport ${port} -m comment --comment "${comment}" -j ACCEPT >/dev/null 2>&1
+            [ -n "${t_port_v6}" ] && t_port_v6="${t_port_v6} "
+            t_port_v6="${t_port_v6}${port}"
+        fi
+        done
+    fi
+    if [ -n "${frps_openports_u}" ]; then
+        for port in ${frps_openports_u}
+        do
+        [ "$port" -gt 65535 -o "$port" -lt 1 ] && echo_date "--->错误：端口 $port 非法" && continue
+        [ "${port:0:1}" == "0" ] && port=$(expr "$port" + 0)
+        if [ "${frps_ifopenport}" != "v6" ];then
+            iptables -I INPUT -p udp --dport ${port} -m comment --comment "${comment}" -j ACCEPT >/dev/null 2>&1
+            [ -n "${u_port}" ] && u_port="${u_port} "
+            u_port="${u_port}${port}"
+        fi
+        if [ "${frps_ifopenport}" != "v4" ];then
+        	ip6tables -I INPUT -p udp --dport ${port} -m comment --comment "${comment}" -j ACCEPT >/dev/null 2>&1
+            [ -n "${u_port_v6}" ] && u_port_v6="${u_port_v6} "
+            u_port_v6="${u_port_v6}${port}"
+        fi
+        done
+    fi
+    [ -n "${t_port}" ] && echo_date "开启IPV4 TCP端口：${t_port}"
+    [ -n "${u_port}" ] && echo_date "开启IPV4 UDP端口：${u_port}"
+    [ -n "${t_port_v6}" ] && echo_date "开启IPV6 TCP端口：${t_port_v6}"
+    [ -n "${u_port_v6}" ] && echo_date "开启IPV6 UDP端口：${u_port_v6}"
+}
+close_port(){
+    local IPTS=$(iptables -t filter -S INPUT | grep -w "${comment}")
+    local IPTS6=$(ip6tables -t filter -S INPUT | grep -w "${comment}")
+    [ -z "${IPTS}" ] && [ -z "${IPTS6}" ] && return 1
+    local tmp_file=/tmp/Clean_Frps_rule.sh
+	echo_date "关闭当前本插件在防火墙上打开的所有端口!"
+	iptables -t filter -S INPUT | grep -w "${comment}" | sed 's/-A/iptables -D/g' > "${tmp_file}"
+	ip6tables -t filter -S INPUT | grep -w "${comment}" | sed 's/-A/ip6tables -D/g' >> "${tmp_file}"
+	chmod +x "${tmp_file}"
+	/bin/sh "${tmp_file}" >/dev/null 2>&1
+	rm -f "${tmp_file}"
+}
+# 开启服务
+onstart() {
+    echo_date "收集信息..."
+    [ ! -f "${BIN}" ] && echo_date "Frps 主程序文件不存在，退出" && return 1
+    [ -x "${BIN}" ] || chmod 755 ${BIN}
+	# 查看及记录主程序版本
+	frps_bin_ver=`${BIN} --version`
+	echo_date "当前插件 frps 主程序版本号：${frps_bin_ver}"
 	if [ "${frps_client_version}" != "${frps_bin_ver}" ]; then
         dbus set frps_client_version=${frps_bin_ver}
         echo_date "更新dbus数据：frps主程序版本号"
 	fi
 
-    # frps配置文件
-	echo_date "生成frps配置文件到 /tmp/upload/.frps.ini"
-	cat >${INI_FILE} <<-EOF
-	[common]
-	bind_addr = 0.0.0.0
-	bind_port = ${frps_common_bind_port}
-	token = ${frps_common_privilege_token}
-	tcp_mux = ${frps_common_tcp_mux}
-	EOF
-	
-	[ -n "${frps_common_kcp_bind_port}" ] && echo "kcp_bind_port = ${frps_common_kcp_bind_port}" >> ${INI_FILE}
-	[ -n "${frps_common_quic_bind_port}" ] && echo "quic_bind_port = ${frps_common_quic_bind_port}" >> ${INI_FILE}
-	[ -n "${frps_common_bind_udp_port}" ] && echo "bind_udp_port = ${frps_common_bind_udp_port}" >> ${INI_FILE}
-	[ -n "${frps_common_vhost_http_port}" ] && echo "vhost_http_port = ${frps_common_vhost_http_port}" >> ${INI_FILE}
-	[ -n "${frps_common_vhost_https_port}" ] && echo "vhost_https_port = ${frps_common_vhost_https_port}" >> ${INI_FILE}
-	[ -n "${frps_common_subdomain_host}" ] && echo "subdomain_host = ${frps_common_subdomain_host}" >> ${INI_FILE}
-	[ -n "${frps_common_max_pool_count}" ] && echo "max_pool_count = ${frps_common_max_pool_count}" >> ${INI_FILE}
-	[ -n "${frps_common_tls_only}" ] && echo "tls_only = ${frps_common_tls_only}" >> ${INI_FILE}
-	[ -n "${frps_common_log_file}" ] && echo "log_file = ${frps_common_log_file}" >> ${INI_FILE}
-	[ -n "${frps_common_log_level}" ] && echo "log_level = ${frps_common_log_level}" >> ${INI_FILE}
-	[ -n "${frps_common_log_max_days}" ] && echo "log_max_days = ${frps_common_log_max_days}" >> ${INI_FILE}
-	[ -n "${frps_common_dashboard_port}" ] && echo "dashboard_port = ${frps_common_dashboard_port}" >> ${INI_FILE}
-	[ -n "${frps_common_dashboard_user}" ] && echo "dashboard_user = ${frps_common_dashboard_user}" >> ${INI_FILE}
-	[ -n "${frps_common_dashboard_pwd}" ] && echo "dashboard_pwd = ${frps_common_dashboard_pwd}" >> ${INI_FILE}
+	if [ "${frps_enable}" != "1" ]; then
+        onkill
+        _Flag_=0; fun_crontab; fun_nat_start
+        close_port
+        echo_date "未开启 frps 服务，退出."
+        return 1
+	fi
+	# 关闭frps进程
+	onkill
+	# 同步时间
+	sync_ntp
+    # 配置文件
+	echo_date "生成 frps 配置文件到 $Conf_FILE"
+	true >${Conf_FILE}
 
-	# 附加参数
+	add_cfg "${Conf_FILE}" \
+	"bindAddr" "bindPort..INT" "auth.token" "transport.tcpMux..INT" "kcpBindPort..INT" "quicBindPort..INT" "allowPorts..ARR" \
+	"vhostHTTPPort..INT" "vhostHTTPSPort..INT" "subDomainHost" "transport.maxPoolCount..INT" "transport.tls.force..INT" \
+	"log.to" "log.level" "log.maxDays..INT" "webServer.addr" "webServer.port..INT" "webServer.user" "webServer.password"
+	
 	if [ "`dbus get frps_extra_config`" == "1" ];then
             _frps_extra_options=`dbus get frps_extra_options | base64_decode`
-            cat >> ${INI_FILE}<<-EOF
-				# 以下是追加的参数
+            cat >> ${Conf_FILE}<<-EOF
 				${_frps_extra_options}
 				EOF
 	fi
-	
-	# 开启frps
-	if [ "$frps_enable" == "1" ]; then
-		echo_date "启动frps主程序..."
-		export GOGC=40
-		start-stop-daemon -S -q -b -m -p /var/run/frps.pid -x /jffs/softcenter/bin/frps -- -c ${INI_FILE}
 
-		local FRPSPID
-		local i=10
-		until [ -n "$FRPSPID" ]; do
-			i=$(($i - 1))
-			FRPSPID=$(pidof frps)
-			if [ "$i" -lt 1 ]; then
-				echo_date "frps进程启动失败！"
-				echo_date "可能是内存不足造成的，建议使用虚拟内存后重试！"
-				close_in_five
-			fi
-			usleep 250000
-		done
-		echo_date "frps启动成功，pid：${FRPSPID}。(若是更新配置后首次启动，仍需确认状态...)"
-		    fun_nat_start
-		    fun_crontab
-		    logfile_link
-		    open_port
-	else
-		stop
-	fi
-	echo_date "frps插件启动完毕，本窗口将在5s内自动关闭！"
-}
-after_startup(){
-    local FRPSPID=NotNull
+	# 先确定日志文件
+	logfile_prepare
+		
+	echo_date "启动 frps 主程序..." | tee -a "${redirect_file}"
+# 	export GOGC=40
+
+    # 启动时sh -c要执行的命令前加exec，使父进程/bin/sh被子进程frp替换，以免pid不一样出现异常
+	start-stop-daemon -S -q -b -m -p ${PID_FILE} -a /bin/sh -- -c "exec ${BIN} -c ${Conf_FILE} >>\"${redirect_file}\" 2>&1"
+
+	local FRPSPID
 	local i=11
-	until [ -z "$FRPSPID" ]; do
+	until [ -n "$FRPSPID" ]; do
 		i=$(($i - 1))
 		FRPSPID=$(pidof frps)
 		if [ "$i" -lt 1 ]; then
-			echo_date "frps进程再次确认:已运行"
-			return
+			echo_date "Frps 启动失败！"
+			return 1
 		fi
-		sleep 2s
-	done
-	echo_date "------------------------注 意---------------------------"
-    echo_date "Frps主程序启动后，又因故退出！原因可能是："
-    echo_date "1、参数配置错误，比如调用的证书等文件路径无效；"
-    echo_date "2、参数配置冲突，尤其注意检查‘其他参数追加’栏；"
-    echo_date "3、内存不足，尝试关闭其他插件或使用虚拟内存；"
-    echo_date "用命令行启动，可查看具体报错信息，命令如下："
-    echo_date "/jffs/softcenter/bin/frps -c /tmp/upload/.frps.ini"
-    echo_date "--------------------------------------------------------"
-}
-
-check_port(){
-	local prot=$1
-	local port=$2
-	local open=$(iptables -S -t filter | grep INPUT | grep dport | grep ${prot} | grep ${port})
-	if [ -n "${open}" ];then
-		echo 0
-	else
-		echo 1
-	fi
-}
-check_port6(){
-	local prot=$1
-	local port=$2
-	local open=$(ip6tables -S -t filter | grep INPUT | grep dport | grep ${prot} | grep ${port})
-	if [ -n "${open}" ];then
-		echo 0
-	else
-		echo 1
-	fi
-}
-open_port(){
-	local ifopenport
-	[ "${frps_common_ifopenport}" != "false" ] && [ "${frps_common_ifopenport}" != "v6" ] && ifopenport=1
-	if [ "${ifopenport}" == "1" ];then
-	local t_port
-	local u_port
-	local ex_t_port
-	[ -n "${frps_common_vhost_http_port}" ] && [ "$(check_port tcp ${frps_common_vhost_http_port})" == "1" ] && iptables -I INPUT -p tcp --dport ${frps_common_vhost_http_port} -j ACCEPT && t_port="${frps_common_vhost_http_port}"
-	[ -n "${frps_common_vhost_https_port}" ] && [ "$(check_port tcp ${frps_common_vhost_https_port})" == "1" ] && iptables -I INPUT -p tcp --dport ${frps_common_vhost_https_port} -j ACCEPT && t_port="${t_port} ${frps_common_vhost_https_port}"
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port tcp ${frps_common_bind_port})" == "1" ] && iptables -I INPUT -p tcp --dport ${frps_common_bind_port} -j ACCEPT && t_port="${t_port} ${frps_common_bind_port}"
-	[ -n "${frps_common_dashboard_port}" ] && [ "$(check_port tcp ${frps_common_dashboard_port})" == "1" ] && iptables -I INPUT -p tcp --dport ${frps_common_dashboard_port} -j ACCEPT && t_port="${t_port} ${frps_common_dashboard_port}"
-	[ -n "${frps_common_extra_openport}" ] && [ "$(check_port tcp ${frps_common_extra_openport})" == "1" ] && iptables -I INPUT -p tcp -m multiport --dports ${frps_common_extra_openport} -j ACCEPT && ex_t_port="${frps_common_extra_openport}"
-
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port udp ${frps_common_bind_port})" == "1" ] && iptables -I INPUT -p udp --dport ${frps_common_bind_port} -j ACCEPT && u_port="${frps_common_bind_port}"
-	[ -n "${frps_common_kcp_bind_port}" ] && [ "$(check_port udp ${frps_common_kcp_bind_port})" == "1" ] && iptables -I INPUT -p udp --dport ${frps_common_kcp_bind_port} -j ACCEPT && u_port="${u_port} ${frps_common_kcp_bind_port}"
-	[ -n "${frps_common_quic_bind_port}" ] && [ "$(check_port udp ${frps_common_quic_bind_port})" == "1" ] && iptables -I INPUT -p udp --dport ${frps_common_quic_bind_port} -j ACCEPT && u_port="${u_port} ${frps_common_quic_bind_port}"
-	[ -n "${frps_common_bind_udp_port}" ] && [ "$(check_port udp ${frps_common_bind_udp_port})" == "1" ] && iptables -I INPUT -p udp --dport ${frps_common_bind_udp_port} -j ACCEPT && u_port="${u_port} ${frps_common_bind_udp_port}"
-	
-	[ -n "${t_port}" ] && echo_date "开启IPV4 TCP端口：${t_port}"
-	[ -n "${u_port}" ] && echo_date "开启IPV4 UDP端口：${u_port}"
-	[ -n "${ex_t_port}" ] && echo_date "开启备用的IPV4 TCP端口：${ex_t_port}"
-	fi
-	
-	local ifopenport6
-	[ "${frps_common_ifopenport}" != "false" ] && [ "${frps_common_ifopenport}" != "v4" ] && ifopenport6=1
-	if [ "${ifopenport6}" == "1" ];then
-	local ipv6_t_port
-	local ipv6_u_port
-	local ipv6_ex_t_port
-	[ -n "${frps_common_vhost_http_port}" ] && [ "$(check_port6 tcp ${frps_common_vhost_http_port})" == "1" ] && ip6tables -I INPUT -p tcp --dport ${frps_common_vhost_http_port} -j ACCEPT && ipv6_t_port="${frps_common_vhost_http_port}"
-	[ -n "${frps_common_vhost_https_port}" ] && [ "$(check_port6 tcp ${frps_common_vhost_https_port})" == "1" ] && ip6tables -I INPUT -p tcp --dport ${frps_common_vhost_https_port} -j ACCEPT && ipv6_t_port="${ipv6_t_port} ${frps_common_vhost_https_port}"
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port6 tcp ${frps_common_bind_port})" == "1" ] && ip6tables -I INPUT -p tcp --dport ${frps_common_bind_port} -j ACCEPT && ipv6_t_port="${ipv6_t_port} ${frps_common_bind_port}"
-	[ -n "${frps_common_dashboard_port}" ] && [ "$(check_port6 tcp ${frps_common_dashboard_port})" == "1" ] && ip6tables -I INPUT -p tcp --dport ${frps_common_dashboard_port} -j ACCEPT && ipv6_t_port="${ipv6_t_port} ${frps_common_dashboard_port}"
-	[ -n "${frps_common_extra_openport}" ] && [ "$(check_port6 tcp ${frps_common_extra_openport})" == "1" ] && ip6tables -I INPUT -p tcp -m multiport --dports ${frps_common_extra_openport} -j ACCEPT && ipv6_ex_t_port="${frps_common_extra_openport}"
-	
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port6 udp ${frps_common_bind_port})" == "1" ] && ip6tables -I INPUT -p udp --dport ${frps_common_bind_port} -j ACCEPT && ipv6_u_port="${frps_common_bind_port}"
-	[ -n "${frps_common_kcp_bind_port}" ] && [ "$(check_port6 udp ${frps_common_kcp_bind_port})" == "1" ] && ip6tables -I INPUT -p udp --dport ${frps_common_kcp_bind_port} -j ACCEPT && ipv6_u_port="${ipv6_u_port} ${frps_common_kcp_bind_port}"
-	[ -n "${frps_common_quic_bind_port}" ] && [ "$(check_port6 udp ${frps_common_quic_bind_port})" == "1" ] && ip6tables -I INPUT -p udp --dport ${frps_common_quic_bind_port} -j ACCEPT && ipv6_u_port="${ipv6_u_port} ${frps_common_quic_bind_port}"
-	[ -n "${frps_common_bind_udp_port}" ] && [ "$(check_port6 udp ${frps_common_bind_udp_port})" == "1" ] && ip6tables -I INPUT -p udp --dport ${frps_common_bind_udp_port} -j ACCEPT && ipv6_u_port="${ipv6_u_port} ${frps_common_bind_udp_port}"
-	
-	[ -n "${ipv6_t_port}" ] && echo_date "开启IPV6 TCP端口：${ipv6_t_port}"
-	[ -n "${ipv6_u_port}" ] && echo_date "开启IPV6 UDP端口：${ipv6_u_port}"
-	[ -n "${ipv6_ex_t_port}" ] && echo_date "开启备用的IPV6 TCP端口：${ipv6_ex_t_port}"
-	fi
-}
-close_port(){
-    local ifopenport
-	[ "${frps_common_ifopenport}" != "false" ] && [ "${frps_common_ifopenport}" != "v6" ] && ifopenport=1
-	if [ "${ifopenport}" == "1" ];then
-	local t_port
-	local u_port
-	local ex_t_port
-	[ -n "${frps_common_vhost_http_port}" ] && [ "$(check_port tcp ${frps_common_vhost_http_port})" == "0" ] && iptables -D INPUT -p tcp --dport ${frps_common_vhost_http_port} -j ACCEPT && t_port="${frps_common_vhost_http_port}"
-	[ -n "${frps_common_vhost_https_port}" ] && [ "$(check_port tcp ${frps_common_vhost_https_port})" == "0" ] && iptables -D INPUT -p tcp --dport ${frps_common_vhost_https_port} -j ACCEPT && t_port="${t_port} ${frps_common_vhost_https_port}"
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port tcp ${frps_common_bind_port})" == "0" ] && iptables -D INPUT -p tcp --dport ${frps_common_bind_port} -j ACCEPT && t_port="${t_port} ${frps_common_bind_port}"
-	[ -n "${frps_common_dashboard_port}" ] && [ "$(check_port tcp ${frps_common_dashboard_port})" == "0" ] && iptables -D INPUT -p tcp --dport ${frps_common_dashboard_port} -j ACCEPT && t_port="${t_port} ${frps_common_dashboard_port}"
-	[ -n "${frps_common_extra_openport}" ] && [ "$(check_port tcp ${frps_common_extra_openport})" == "0" ] && iptables -D INPUT -p tcp -m multiport --dports ${frps_common_extra_openport} -j ACCEPT && ex_t_port="${frps_common_extra_openport}"
-	
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port udp ${frps_common_bind_port})" == "0" ] && iptables -D INPUT -p udp --dport ${frps_common_bind_port} -j ACCEPT && u_port="${frps_common_bind_port}"
-	[ -n "${frps_common_kcp_bind_port}" ] && [ "$(check_port udp ${frps_common_kcp_bind_port})" == "0" ] && iptables -D INPUT -p udp --dport ${frps_common_kcp_bind_port} -j ACCEPT && u_port="${u_port} ${frps_common_kcp_bind_port}"
-	[ -n "${frps_common_quic_bind_port}" ] && [ "$(check_port udp ${frps_common_quic_bind_port})" == "0" ] && iptables -D INPUT -p udp --dport ${frps_common_quic_bind_port} -j ACCEPT && u_port="${u_port} ${frps_common_quic_bind_port}"
-	[ -n "${frps_common_bind_udp_port}" ] && [ "$(check_port udp ${frps_common_bind_udp_port})" == "0" ] && iptables -D INPUT -p udp --dport ${frps_common_bind_udp_port} -j ACCEPT && u_port="${u_port} ${frps_common_bind_udp_port}"
-	
-	[ -n "${t_port}" ] && echo_date "关闭IPV4 TCP端口：${t_port}"
-	[ -n "${u_port}" ] && echo_date "关闭IPV4 UDP端口：${u_port}"
-	[ -n "${ex_t_port}" ] && echo_date "关闭备用的IPV4 TCP端口：${ex_t_port}"
-	fi
-	
-	local ifopenport6
-	[ "${frps_common_ifopenport}" != "false" ] && [ "${frps_common_ifopenport}" != "v4" ] && ifopenport6=1
-	if [ "${ifopenport6}" == "1" ];then
-	local ipv6_t_port
-	local ipv6_u_port
-	local ipv6_ex_t_port
-	[ -n "${frps_common_vhost_http_port}" ] && [ "$(check_port6 tcp ${frps_common_vhost_http_port})" == "0" ] && ip6tables -D INPUT -p tcp --dport ${frps_common_vhost_http_port} -j ACCEPT && ipv6_t_port="${frps_common_vhost_http_port}"
-	[ -n "${frps_common_vhost_https_port}" ] && [ "$(check_port6 tcp ${frps_common_vhost_https_port})" == "0" ] && ip6tables -D INPUT -p tcp --dport ${frps_common_vhost_https_port} -j ACCEPT && ipv6_t_port="${ipv6_t_port} ${frps_common_vhost_https_port}"
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port6 tcp ${frps_common_bind_port})" == "0" ] && ip6tables -D INPUT -p tcp --dport ${frps_common_bind_port} -j ACCEPT && ipv6_t_port="${ipv6_t_port} ${frps_common_bind_port}"
-	[ -n "${frps_common_dashboard_port}" ] && [ "$(check_port6 tcp ${frps_common_dashboard_port})" == "0" ] && ip6tables -D INPUT -p tcp --dport ${frps_common_dashboard_port} -j ACCEPT && ipv6_t_port="${ipv6_t_port} ${frps_common_dashboard_port}"
-	[ -n "${frps_common_extra_openport}" ] && [ "$(check_port6 tcp ${frps_common_extra_openport})" == "0" ] && ip6tables -D INPUT -p tcp -m multiport --dports ${frps_common_extra_openport} -j ACCEPT && ipv6_ex_t_port="${frps_common_extra_openport}"
-	
-	[ -n "${frps_common_bind_port}" ] && [ "$(check_port6 udp ${frps_common_bind_port})" == "0" ] && ip6tables -D INPUT -p udp --dport ${frps_common_bind_port} -j ACCEPT && ipv6_u_port="${frps_common_bind_port}"
-	[ -n "${frps_common_kcp_bind_port}" ] && [ "$(check_port6 udp ${frps_common_kcp_bind_port})" == "0" ] && ip6tables -D INPUT -p udp --dport ${frps_common_kcp_bind_port} -j ACCEPT && ipv6_u_port="${ipv6_u_port} ${frps_common_kcp_bind_port}"
-	[ -n "${frps_common_quic_bind_port}" ] && [ "$(check_port6 udp ${frps_common_quic_bind_port})" == "0" ] && ip6tables -D INPUT -p udp --dport ${frps_common_quic_bind_port} -j ACCEPT && ipv6_u_port="${ipv6_u_port} ${frps_common_quic_bind_port}"
-	[ -n "${frps_common_bind_udp_port}" ] && [ "$(check_port6 udp ${frps_common_bind_udp_port})" == "0" ] && ip6tables -D INPUT -p udp --dport ${frps_common_bind_udp_port} -j ACCEPT && ipv6_u_port="${ipv6_u_port} ${frps_common_bind_udp_port}"
-	
-	[ -n "${ipv6_t_port}" ] && echo_date "关闭IPV6 TCP端口：${ipv6_t_port}"
-	[ -n "${ipv6_u_port}" ] && echo_date "关闭IPV6 UDP端口：${ipv6_u_port}"
-	[ -n "${ipv6_ex_t_port}" ] && echo_date "关闭备用的IPV6 TCP端口：${ipv6_ex_t_port}"
-	fi
-}
-close_in_five() {
-	echo_date "插件将在5秒后自动关闭！！"
-	local i=5
-	while [ $i -ge 0 ]; do
 		sleep 1
-		echo_date $i
-		let i--
 	done
-	dbus set ss_basic_enable="0"
-	disable_ss >/dev/null
-	echo_date "插件已关闭！！"
-	unset_lock
-	exit
-}
-stop() {
-	# 关闭frps进程
-	if [ -n "$(pidof frps)" ];then
-		echo_date "停止frps主进程，pid：$(pidof frps)"
-		killall frps >/dev/null 2>&1
-	fi
-
-	if [ -n "$(cru l|grep frps_monitor)" ];then
-		echo_date "删除定时任务..."
-		cru d frps_monitor >/dev/null 2>&1
-	fi
-
-	if [ -L "/jffs/softcenter/init.d/N95Frps.sh" ];then
-		echo_date "删除nat触发..."
-   		rm -rf /jffs/softcenter/init.d/N95Frps.sh >/dev/null 2>&1
-   	fi
-
+	echo_date "Frps 启动成功，pid：${FRPSPID}"
+	_Flag_=1; fun_nat_start; fun_crontab
     close_port
+	sleep 1
+	open_port
 }
-
+# 网页端弹出窗口附加信息
+echo_tips(){
+    [ "${frps_enable}" != "1" ] && return 1
+    echo_date "-----------------温 馨 提 示-----------------------"
+    echo_date "主程序出现启动失败，或启动后又自动退出！可能原因："
+    echo_date "1、参数错误或冲突，如SSL证书无效、语法错误等"
+    echo_date "2、内存不足，尝试释放内存或使用虚拟内存"
+    echo_date "3、可查阅运行日志记录获取更多信息"
+    echo_date "--------------------------------------------------"
+}
 
 case $ACTION in
 start)
+	[ "$frps_enable" != "1" ] && exit
 	set_lock
-	true > $LOG_FILE
-	if [ "$frps_enable" == "1" ]; then
-		logger "[软件中心]: 启动frps！"
-		onstart | tee -a $LOG_FILE
-		echo XU6J03M6 | tee -a $LOG_FILE
-	fi
+	logger "[软件中心]: 启动 frps..."
+	onstart | tee -a $LOG_FILE
+	echo XU6J03M6 | tee -a $LOG_FILE
 	unset_lock
 	;;
 restart)
 	set_lock
-	true > $LOG_FILE
-	if [ "$frps_enable" == "1" ]; then
-		stop | tee -a $LOG_FILE
-		onstart | tee -a $LOG_FILE
-		echo XU6J03M6 | tee -a $LOG_FILE
-	fi
+	onstop | tee -a $LOG_FILE
+	onstart | tee -a $LOG_FILE
+	echo XU6J03M6 | tee -a $LOG_FILE
 	unset_lock
 	;;
 stop)
 	set_lock
-	true > $LOG_FILE
-	stop | tee -a $LOG_FILE
+	onstop | tee -a $LOG_FILE
 	echo XU6J03M6 | tee -a $LOG_FILE
 	unset_lock
 	;;
+clearlog)
+    true >${logFile_lnk}
+	http_response "$1"
+    ;;
 start_nat)
 	set_lock
-	if [ "$frps_enable" == "1" ]; then
-        f_pid=$(pidof frps)
-        if [ -n "${f_pid}" ];then
-            echo_date "NAT触发：frps pid:${f_pid}，正在检查端口打开情况"  | tee -a $LOG_FILE
-            open_port | tee -a $LOG_FILE
-        else
-            logger "【软件中心】NAT触发：frps未运行，启动..."
-            echo_date "NAT触发：frps未运行，启动..."  | tee -a $LOG_FILE
-            onstart | tee -a $LOG_FILE
-            echo XU6J03M6 | tee -a $LOG_FILE
-        fi
-	fi
+    f_pid=$(pidof frps)
+    if [ -n "${f_pid}" ];then
+        echo_date "NAT触发：frps pid:${f_pid}，检查端口打开情况" | tee -a $LOG_FILE
+		close_port | tee -a $LOG_FILE
+		open_port | tee -a $LOG_FILE
+    else
+        logger "【软件中心】NAT触发：启动 frps..."
+        echo_date "NAT触发：启动 frps..." | tee -a $LOG_FILE
+        onstart | tee -a $LOG_FILE
+    fi
+	echo XU6J03M6 | tee -a $LOG_FILE
 	unset_lock
 	;;
 watch)
     set_lock
-    if [ "$frps_enable" == "1" ]; then
-        f_pid=$(pidof frps)
-        if [ -n "${f_pid}" ];then
-            echo_date "定时任务：frps pid:${f_pid}，正常运行"  | tee -a $LOG_FILE
-        else
-            logger "【软件中心】定时任务：frps未运行，启动..."
-            echo_date "定时任务：frps未运行，启动..."  | tee -a $LOG_FILE
-            onstart | tee -a $LOG_FILE
-            echo XU6J03M6 | tee -a $LOG_FILE
-	    fi
+    f_pid=$(pidof frps)
+    if [ -n "${f_pid}" ];then
+        echo_date "定时任务：frps pid:${f_pid}，正常运行" | tee -a $LOG_FILE
+    else
+        logger "【软件中心】定时任务：启动 frps..."
+        echo_date "定时任务：启动 frps..." | tee -a $LOG_FILE
+        onstart | tee -a $LOG_FILE
 	fi
+	echo XU6J03M6 | tee -a $LOG_FILE
 	unset_lock
 	;;
 web_submit)
 	set_lock
-	true > $LOG_FILE
 	http_response "$1"
-	if [ "${frps_enable}" == "1" ]; then
-		stop | tee -a $LOG_FILE
-		onstart | tee -a $LOG_FILE
-		echo_date "稍后20秒内，会自动确认进程状态。若网页显示‘进程未运行’，请查看本日志" | tee -a $LOG_FILE
-		echo XU6J03M6 | tee -a $LOG_FILE
-		after_startup | tee -a $LOG_FILE
-	else
-		stop | tee -a $LOG_FILE
-		echo XU6J03M6 | tee -a $LOG_FILE
-	fi
+	true > $LOG_FILE
+	onstart | tee -a $LOG_FILE
+	echo_tips | tee -a $LOG_FILE
+	echo XU6J03M6 | tee -a $LOG_FILE
 	unset_lock
 	;;
 esac
-

@@ -6,25 +6,12 @@ mkdir -p /tmp/upload
 
 NAME=frpc
 BIN=/jffs/softcenter/bin/frpc
-INI_FILE=/tmp/upload/.frpc.ini
-STCP_INI_FILE=/tmp/upload/.frpc_stcp.ini
+Conf_FILE=/tmp/upload/.frpc.toml
+Visitor_Con=/tmp/upload/.frpc_visitor.toml
 PID_FILE=/var/run/frpc.pid
+logFile_lnk=/tmp/upload/frpc_lnk.log
 
-logfile_link(){
-    if [ "${frpc_enable}"x = "1"x ];then
-        if [ "`dbus get frpc_customize_conf`"x = "1"x ];then
-            local a=$(grep 'log_file' ${INI_FILE})
-            # 右边起最后一个log_file字符串及其右侧的字符删除后，是否包含注释符，有表示未启用
-            [ -n "$(echo ${a%%'log_file'*} | grep '#')" ] && rm -rf /tmp/upload/frpc_lnk.log >/dev/null 2>&1 && return
-            #删除左边起第一个=号及其左边的字符
-            local b=$(echo ${a#*'='})
-            [ -n "$b" ] && ln -sf $b /tmp/upload/frpc_lnk.log
-        else
-            [ -n "${frpc_common_log_file}" ] && ln -sf ${frpc_common_log_file} /tmp/upload/frpc_lnk.log
-            [ -z "${frpc_common_log_file}" ] && rm -rf /tmp/upload/frpc_lnk.log >/dev/null 2>&1
-        fi
-    fi
-}
+# 时间同步
 fun_ntp_sync(){
     ntp_server=`nvram get ntp_server0`
     start_time="`date +%Y%m%d`"
@@ -33,182 +20,310 @@ fun_ntp_sync(){
         ntpclient -h ntp1.aliyun.com -i3 -l -s > /dev/null 2>&1
     fi
 }
-fun_start_stop(){
-    dbus set frpc_client_version=`${BIN} --version`
-    if [ "${frpc_enable}"x = "1"x ];then
-        if [ "`dbus get frpc_customize_conf`"x = "1"x ];then
-            _frpc_customize_conf=`dbus get frpc_config | base64_decode` || "未发现配置文件"
-            cat > ${INI_FILE}<<-EOF
-				# frpc custom configuration
-				${_frpc_customize_conf}
-				EOF
-        else
-            stcp_en=`dbus list frpc_proto_node | grep stcp`
-            cat > ${INI_FILE}<<-EOF
-				# frpc configuration
-				[common]
-				server_addr = ${frpc_common_server_addr}
-				server_port = ${frpc_common_server_port}
-				token = ${frpc_common_privilege_token}
-				tcp_mux = ${frpc_common_tcp_mux}
-				protocol = ${frpc_common_protocol}
-				login_fail_exit = ${frpc_common_login_fail_exit}
-			EOF
-			   [ -n "${frpc_common_user}" ] && echo "user = ${frpc_common_user}" >> ${INI_FILE}
-			   [ -n "${frpc_common_heartbeat_interval}" ] && echo "heartbeat_interval = ${frpc_common_heartbeat_interval}" >> ${INI_FILE}
-			   [ -n "${frpc_common_tls_enable}" ] && echo "tls_enable = ${frpc_common_tls_enable}" >> ${INI_FILE}
-			   [ -n "${frpc_common_log_file}" ] && echo "log_file = ${frpc_common_log_file}" >> ${INI_FILE}
-			   [ -n "${frpc_common_log_level}" ] && echo "log_level = ${frpc_common_log_level}" >> ${INI_FILE}
-			   [ -n "${frpc_common_log_max_days}" ] && echo "log_max_days = ${frpc_common_log_max_days}" >> ${INI_FILE}
-
-            if [[ "${stcp_en}" != "" ]]; then
-                cat > ${STCP_INI_FILE}<<-EOF
-					[common]
-					server_addr = ${frpc_common_server_addr}
-					server_port = ${frpc_common_server_port}
-					token = ${frpc_common_privilege_token}
-				EOF
-            fi
-            server_nu=`dbus list frpc_localhost_node | sort -n -t "_" -k 4|cut -d "=" -f 1|cut -d "_" -f 4`
-            for nu in ${server_nu}
-            do
-                array_subname=`dbus get frpc_subname_node_$nu`
-                array_type=`dbus get frpc_proto_node_$nu`
-                array_local_ip=`dbus get frpc_localhost_node_$nu`
-                array_local_port=`dbus get frpc_localport_node_$nu`
-                array_remote_port=`dbus get frpc_remoteport_node_$nu`
-                array_custom_domains=`dbus get frpc_subdomain_node_$nu`
-                array_use_encryption=`dbus get frpc_encryption_node_$nu`
-                array_use_gzip=`dbus get frpc_gzip_node_$nu`
-                if [[ "${array_type}" == "tcp" ]] || [[ "${array_type}" == "udp" ]]; then
-                    cat >> ${INI_FILE} <<-EOF
-						[${array_subname}]
-						type = ${array_type}
-						local_ip = ${array_local_ip}
-						local_port = ${array_local_port}
-						remote_port = ${array_remote_port}
-					EOF
-					[ "${array_use_encryption}" != "(default)" ] && echo "use_encryption = ${array_use_encryption}" >> ${INI_FILE}
-					[ "${array_use_gzip}" != "(default)" ] && echo "use_compression = ${array_use_gzip}" >> ${INI_FILE}
-                elif [[ "${array_type}" == "stcp" ]]; then
-                    cat >> ${INI_FILE} <<-EOF
-						[${array_subname}]
-						type = ${array_type}
-						sk = ${array_custom_domains}
-						local_ip = ${array_local_ip}
-						local_port = ${array_local_port}
-					EOF
-					[ "${array_use_encryption}" != "(default)" ] && echo "use_encryption = ${array_use_encryption}" >> ${INI_FILE}
-					[ "${array_use_gzip}" != "(default)" ] && echo "use_compression = ${array_use_gzip}" >> ${INI_FILE}
-                    cat >> ${STCP_INI_FILE}<<-EOF
-						
-						[secret_tcp_visitor]
-						# frpc 访问者 -> frps -> frpc 服务者
-						role = visitor
-						type = stcp
-						# 访问者使用以下地址、端口（可按需修改），进行访问
-						bind_addr = 127.0.0.1
-						bind_port = 9000
-						# 想要访问的服务者sk和规则名称
-						sk = ${array_custom_domains}
-					EOF
-					[ -n "${frpc_common_user}" ] && echo "server_name = ${frpc_common_user}.${array_subname}" >> ${STCP_INI_FILE}
-					[ -z "${frpc_common_user}" ] && echo "server_name = ${array_subname}" >> ${STCP_INI_FILE}
-					[ "${array_use_encryption}" != "(default)" ] && echo "use_encryption = ${array_use_encryption}" >> ${STCP_INI_FILE}
-					[ "${array_use_gzip}" != "(default)" ] && echo "use_compression = ${array_use_gzip}" >> ${STCP_INI_FILE}
-                else
-                    cat >> ${INI_FILE} <<-EOF
-						[${array_subname}]
-						type = ${array_type}
-						local_ip = ${array_local_ip}
-						local_port = ${array_local_port}
-						remote_port = ${array_remote_port}
-						custom_domains = ${array_custom_domains}
-					EOF
-					[ "${array_use_encryption}" != "(default)" ] && echo "use_encryption = ${array_use_encryption}" >> ${INI_FILE}
-					[ "${array_use_gzip}" != "(default)" ] && echo "use_compression = ${array_use_gzip}" >> ${INI_FILE}
-                fi
-            done
+# 因变量不能带 . 号，故dbus中frp参数相关的 . 用 __ 替代；在调用此函数时，frp参数名称，分3类：
+# 1.Toml字符串类，直接使用，并加双引号输出
+# 2.Toml布尔和整数，使用时，名称请附加 ..INT 后缀，在此处理后，并原样输出
+# 3.Toml数组，使用时请附加 ..ARR 后缀，网页端可 不加引号使用逗号或空格分隔 的简写方式，处理后，再加方括号输出
+add_cfg(){
+	local file="$1"
+	local Type="$2"
+	shift 2
+	local o v f
+	for o in "$@" ; do
+		f=""
+		if [ -n "$(echo "$o" | grep "..INT")" ];then
+            f=1
+            o=${o//..INT/}
+		fi
+        if [ -n "$(echo "$o" | grep "..ARR")" ];then
+            f=2
+            o=${o//..ARR/}
         fi
-        killall frpc || true
-        sleep 1
-        export GOGC=40
-        start-stop-daemon -S -q -b -m -p ${PID_FILE} -x ${BIN} -- -c ${INI_FILE}
-        logfile_link
-    else
-        killall frpc || true
-    fi
+		[ "$Type" == "comm" ] && eval v=\$frpc_common_${o//./__}
+		[ "$Type" == "rule" ] && eval v=\$array_${o//./__}
+		
+		if [ -n "$v" -a "$v" != "none" ];then
+			[ "$f" == "" ] && echo "${o} = \"${v}\"" >>"$file"
+			[ "$f" == "1" ] && echo "${o} = ${v}" >>"$file"
+			if [ "$f" == "2" ];then
+                local T M
+                M=""
+                # 若有逗号分隔则替换为空格
+                v=${v//,/ }
+                
+                # 查找单个的 * ，替换为 "*" ，当变量值为单个的 * 时（参数allowUsers），规避for循环取值异常
+                if [ -n "$(echo "$v" | grep "^\* \| \* \| \*$")" ];then
+                    v="${v//\*/\"*\"}"
+                fi
+                [ "$v" == "*" ] && v=\"*\"
+				
+                for T in $v ; do
+                    # 忽略单个的 ' 或 " 符。
+                    if [ "${T:0:1}" == "\"" -o "${T:0:1}" == "'" ] && [ "${#T}" == "1" ];then
+                        continue
+                    fi
+                    # 除首尾同是 ' 或同是 " 外，删除所有 ' 或 " ，并补全首尾的 " 。
+                    if [ "${T:0:1}" == "\"" -a "$(echo -n "$T" | tail -c 1)" == "\"" ] || [ "${T:0:1}" == "'" -a "$(echo -n "$T" | tail -c 1)" == "'" ];then
+                        true
+                    else
+                        T=${T//\'/}
+                        T=\"${T//\"/}\"
+                    fi
+                    # 用逗号+空格组合
+                    [ -n "$M" ] && M="${M}, "
+                    M=$M$T
+                done
+                echo "${o} = [${M}]" >>"$file"
+			fi
+		fi
+	done
 }
+# 自启
 fun_nat_start(){
     if [ "${frpc_enable}"x = "1"x ];then
-	[ ! -L "/jffs/softcenter/init.d/N99frpc.sh" ] && ln -sf /jffs/softcenter/scripts/frpc_config.sh /jffs/softcenter/init.d/N99frpc.sh
+	    [ ! -L "/jffs/softcenter/init.d/S99frpc.sh" ] && ln -sf /jffs/softcenter/scripts/frpc_config.sh /jffs/softcenter/init.d/S99frpc.sh
     else
-	rm -rf /jffs/softcenter/init.d/N99frpc.sh >/dev/null 2>&1
+	    rm -f /jffs/softcenter/init.d/S99frpc.sh
     fi
 }
+# 定时任务
 fun_crontab(){
-    if [ "${frpc_enable}"x = "1"x ];then
-        if [ "${frpc_common_cron_time}"x = "0"x ]; then
-            cru d frpc_monitor
+    if [ "${frpc_enable}" != "1" ] || [ "${frpc_cron_time}"x = "0"x ];then
+        [ -n "$(cru l | grep frpc_monitor)" ] && cru d frpc_monitor
+        return 1
+    fi
+	if [ "${frpc_cron_hour_min}" == "min" ]; then
+        if [ "${frpc_cron_type}" == "watch" ]; then
+        	cru a frpc_monitor "*/"${frpc_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh watch"
+        elif [ "${frpc_cron_type}" == "start" ]; then
+            cru a frpc_monitor "*/"${frpc_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh start"
+    	fi
+    elif [ "${frpc_cron_hour_min}" == "hour" ]; then
+        if [ "${frpc_cron_type}" == "watch" ]; then
+            cru a frpc_monitor "0 */"${frpc_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh watch"
+        elif [ "${frpc_cron_type}" == "start" ]; then
+            cru a frpc_monitor "0 */"${frpc_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh start"
+        fi
+    fi
+}
+# 创建日志文件目录及链接
+logfile_prepare(){
+    if [ "`dbus get frpc_customize_conf`"x = "1"x ];then
+		local a b c
+		# For TOML
+		if [ -n "$(grep -w "log.to" ${Conf_FILE})" ];then
+			a=$(grep -w "log.to" ${Conf_FILE})
+			# 取右边起最后一个log.to前面的内容，是否包含注释符
+			if [ -z "$(echo "${a%%log.to*}" | grep "#")" ];then
+				# 取左边起第一个=后面的内容，并去除首空格
+				b=`echo "${a#*=}" | sed 's/^[ ]*//g'`
+			fi
+		# For YAML（无引号时可能有尾部空格，也要删除）
+		elif [ -n "$(grep -w "to:" ${Conf_FILE})" ];then
+			a=$(grep -w  "to:" ${Conf_FILE})
+			if [ -z "$(echo "${a%%to:*}" | grep "#")" ];then
+				b=`echo "${a#*to:}" | sed -e 's/^[ ]*//g' -e 's/[ ]*$//g'`
+			fi
+		# For JSON（不查询#符号）
+		elif [ -n "$(grep -w "\"to\":" ${Conf_FILE})" ];then
+			a=$(grep -w "\"to\":" ${Conf_FILE})
+			b=`echo "${a#*\"to\":}" | sed 's/^[ ]*//g'`
+		# For INI
+		elif [ -n "$(grep -w "log_file" ${Conf_FILE})" ];then
+			a=$(grep -w "log_file" ${Conf_FILE})
+			if [ -z "$(echo "${a%%log_file*}" | grep "#")" ];then
+				b=`echo "${a#*=}" | sed -e 's/^[ ]*//g' -e 's/[ ]*$//g'`
+			fi
+		fi
+		# 首字符是否是引号
+        if [ "${b:0:1}" == "\"" ];then
+            c=${b#*\"}
+            [ -n "${c%%\"*}" ] && RUN_logFile=${c%%\"*}
+        elif [ "${b:0:1}" == "'" ];then
+            c=${b#*\'}
+            [ -n "${c%%\'*}" ] && RUN_logFile=${c%%\'*}
         else
-            if [ "${frpc_common_cron_hour_min}"x = "min"x ]; then
-                if [ "${frpc_common_cron_type}"x = "L1"x ]; then
-                    cru a frpc_monitor "*/"${frpc_common_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh watch"
-                elif [ "${frpc_common_cron_type}"x = "L2"x ]; then
-                    cru a frpc_monitor "*/"${frpc_common_cron_time}" * * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh start"
-                fi
-            elif [ "${frpc_common_cron_hour_min}"x = "hour"x ]; then
-                if [ "${frpc_common_cron_type}"x = "L1"x ]; then
-                    cru a frpc_monitor "0 */"${frpc_common_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh watch"
-                elif [ "${frpc_common_cron_type}"x = "L2"x ]; then
-                    cru a frpc_monitor "0 */"${frpc_common_cron_time}" * * * /bin/sh /jffs/softcenter/scripts/frpc_config.sh start"
-                fi
-            fi
+            [ -n "$b" ] && RUN_logFile=$b
         fi
     else
-        cru d frpc_monitor
+        if [ -n "${frpc_common_log__to}" ];then
+            RUN_logFile=${frpc_common_log__to}
+        fi
     fi
+    # 确定 redirect_file，用于启动命令（若和配置指定的一致，启动时不清空，由frp接管保留时间）
+    # 若未配置日志路径，则什么也不记录；配置为/dev/null，无日志仅记录标准输出/错误
+        if [ -z "${RUN_logFile}" -o "${RUN_logFile}" == "console" ];then
+            redirect_file=/dev/null
+		elif [ "${RUN_logFile}" == "/dev/null" ];then
+			redirect_file=/tmp/frpc_std.log
+			true >"${redirect_file}"
+		else
+			mkdir -p "$(dirname "${RUN_logFile}")"
+			touch "${RUN_logFile}"
+			if [ "$?" != "0" ];then
+				redirect_file=/tmp/frpc_std.log
+				echo "【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】：--->警告：配置的日志文件路径似乎无效/只读！" >"${redirect_file}"
+			else
+			    redirect_file=${RUN_logFile}
+			fi
+        fi
+    ln -sf "${redirect_file}" ${logFile_lnk}
+}
+# 关闭进程（先用默认信号，再使用9）
+onkill(){
+    local PID=$(pidof frpc)
+    if [ -n "${PID}" ];then
+		start-stop-daemon -K -p ${PID_FILE} >/dev/null 2>&1
+		kill -9 "${PID}" >/dev/null 2>&1
+	fi
+	rm -f ${PID_FILE}
+}
+# 停止并清理
+onstop(){
+	onkill
+	rm -f /jffs/softcenter/init.d/?99frpc.sh
+	[ -n "$(cru l | grep frpc_monitor)" ] && cru d frpc_monitor
+	rm -f ${Conf_FILE}
+	rm -f ${Visitor_Con}
+}
+# 启动frpc
+fun_start_stop(){
+    [ -x "${BIN}" ] || chmod 755 ${BIN}
+    
+	# 在dbus中记录版本号
+	frpc_bin_ver=`${BIN} --version`
+	if [ "${frpc_client_version}" != "${frpc_bin_ver}" ]; then
+        dbus set frpc_client_version=${frpc_bin_ver}
+	fi
+	
+	# 关掉旧进程、判断开关、同步时间
+	onkill
+	[ "${frpc_enable}"x = "1"x ] || return 1
+	fun_ntp_sync
+	
+	# 配置文件生成
+    if [ "`dbus get frpc_customize_conf`"x = "1"x ];then
+		# 自定义模式
+        _frpc_customize_conf=`dbus get frpc_config | base64_decode`
+        cat > ${Conf_FILE}<<-EOF
+			${_frpc_customize_conf}
+			EOF
+    else
+		# 简单模式
+        CHK=`dbus list frpc_proto_node | grep 'stcp\|xtcp'`
+		echo "# 文件生成时间：$(date +%Y-%m-%d_%H:%M:%S)" > ${Conf_FILE}
+
+		add_cfg "${Conf_FILE}" comm \
+		"serverAddr" "serverPort..INT" "auth.token" "transport.tcpMux..INT" "transport.protocol" \
+		"loginFailExit..INT" "user" "transport.heartbeatInterval..INT" "transport.tls.enable..INT" \
+		"transport.tls.disableCustomTLSFirstByte..INT" "transport.poolCount..INT" "log.to" "log.level" "log.maxDays..INT"
+		
+        if [[ "${CHK}" != "" ]]; then
+			true >${Visitor_Con}
+			add_cfg "${Visitor_Con}" comm \
+			"serverAddr" "serverPort..INT" "auth.token" "transport.tcpMux..INT" "transport.protocol"
+			
+			cat >> ${Visitor_Con}<<-EOF
+					# 设置访问端用户，要在代理项目allowUsers的范围内
+					user = "用户名"
+				EOF
+        fi
+        
+        server_nu=`dbus list frpc_localhost_node | sort -n -t "_" -k 4|cut -d "=" -f 1|cut -d "_" -f 4`
+        for nu in ${server_nu}
+        do
+            array_name=`dbus get frpc_subname_node_$nu`
+            array_type=`dbus get frpc_proto_node_$nu`
+            array_localIP=`dbus get frpc_localhost_node_$nu`
+            array_localPort=`dbus get frpc_localport_node_$nu`
+            array_remotePort=`dbus get frpc_remoteport_node_$nu`
+            array_customDomains=`dbus get frpc_subdomain_node_$nu`
+            array_transport__useEncryption=`dbus get frpc_encryption_node_$nu`
+            array_transport__useCompression=`dbus get frpc_gzip_node_$nu`
+            
+            if [[ "${array_type}" == "tcp" ]] || [[ "${array_type}" == "udp" ]]; then
+				echo "" >> ${Conf_FILE}
+				echo "[[proxies]]" >> ${Conf_FILE}
+				
+				add_cfg "${Conf_FILE}" rule \
+				"name" "type" "localIP" "localPort..INT" "remotePort..INT" "transport.useEncryption..INT" "transport.useCompression..INT"
+				
+            elif [[ "${array_type}" == "stcp" ]] || [[ "${array_type}" == "xtcp" ]]; then
+                array_secretKey=${array_customDomains}
+                array_serverName=${array_name}
+                array_allowUsers=${array_remotePort}
+                array_serverUser=${frpc_common_user}
+
+                echo "" >> ${Conf_FILE}
+                echo "[[proxies]]" >> ${Conf_FILE} 
+				
+				add_cfg "${Conf_FILE}" rule \
+				"name" "type" "secretKey" "localIP" "localPort..INT" "allowUsers..ARR" "transport.useEncryption..INT" "transport.useCompression..INT"
+
+                cat >> ${Visitor_Con}<<-EOF
+
+					[[visitors]]
+					# 访问端使用以下地址、端口（按需配置）
+					bindAddr = "127.0.0.1"
+					bindPort = 端口号
+					name = "${array_type}_visitor_$nu"
+				EOF
+				
+				add_cfg "${Visitor_Con}" rule \
+				"type" "serverUser" "serverName" "secretKey" "transport.useEncryption..INT" "transport.useCompression..INT"
+            else
+				echo "" >> ${Conf_FILE}
+				echo "[[proxies]]" >> ${Conf_FILE}
+				
+				add_cfg "${Conf_FILE}" rule \
+				"name" "type" "localIP" "localPort..INT" "customDomains..ARR" "transport.useEncryption..INT" "transport.useCompression..INT"
+            fi
+        done
+    fi
+
+    # 先确定日志文件
+    logfile_prepare
+    
+	echo "【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】：启动 Frpc..." >>"${redirect_file}"
+    # export GOGC=40
+    
+    # 启动时sh -c要执行的命令前加exec，使父进程/bin/sh被子进程frp替换，以免pid不一样出现异常
+    start-stop-daemon -S -q -b -m -p ${PID_FILE} -a /bin/sh -- -c "exec ${BIN} -c ${Conf_FILE} >>\"${redirect_file}\" 2>&1"
 }
 
 # =============================================
 # this part for start up by post-mount
 case $ACTION in
 start)
-	fun_ntp_sync
+    [ "${frpc_enable}" != "1" ] && exit
+    logger "【软件中心】：启动 frpc..."
 	fun_start_stop
 	fun_nat_start
 	fun_crontab
 	;;
-start_nat)
-    f_pid=$(pidof frpc)
-    if [ -n "${f_pid}" ];then
-        # logger "【软件中心】NAT触发：frpc pid:${f_pid}，无需其它操作"
-        exit 0
-    else
-        logger "【软件中心】NAT触发：frpc未运行，启动..."
-    	fun_ntp_sync
-	    fun_start_stop
-	    fun_crontab
-    fi
+stop)
+	onstop
+	;;
+restart)
+    onstop
+    fun_start_stop
+	fun_nat_start
+	fun_crontab
 	;;
 watch)
-    f_pid=$(pidof frpc)
-    if [ -n "${f_pid}" ];then
-        # logger "【软件中心】定时：frpc pid:${f_pid}，无需其它操作"
-        exit 0
-    else
-        logger "【软件中心】定时任务：frpc未运行，启动..."
-        fun_ntp_sync
-	    fun_start_stop
-	    fun_nat_start
-	    fun_crontab
-	fi
+    [ -n "$(pidof frpc)" ] && exit
+    logger "【软件中心】定时任务：启动 frpc..."
+    fun_start_stop
+    fun_nat_start
 	;;
+clearlog)
+    true >${logFile_lnk}
+	http_response "$1"
+    ;;
 esac
 # for web submit
 case $2 in
 1)
-	fun_ntp_sync
 	fun_start_stop
 	fun_nat_start
 	fun_crontab

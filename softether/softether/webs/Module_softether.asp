@@ -212,9 +212,9 @@ function openurl() {
 												    <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" class="input_ss_table" id="softether_manager_port" name="softether_manager_port" style="width:50px" maxlength="5" value="" placeholder="" />
 												    &nbsp;&nbsp;<span><input id="cmdBtn" onclick="openurl();" type="button" value="Web管理页"/></span><br>
 												    <label><input type="checkbox" id="softether_cascade_port_check" name="softether_cascade_port_check">级联连接端口：</label>
-												    <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" class="input_ss_table" id="softether_cascade_port" name="softether_cascade_port" style="width:50px" maxlength="5" value="" placeholder="" />&nbsp;&nbsp;（<em>若与管理器连接端口相同，无需重复填写</em>）<br>
-												    <label><input type="checkbox" id="softether_tcp_ports_check" name="softether_tcp_ports_check">其他端口：</label>
-												    <input type="text" oninput="this.value=this.value.replace(/[^\d,]/g, '')" class="input_ss_table" id="softether_tcp_ports" name="softether_tcp_ports" maxlength="60" value="" placeholder="连续填写中间逗号隔开" /><p><em>提示：请确认管理器的端口监听列表状态。</em></p>
+												    <input type="text" oninput="this.value=this.value.replace(/[^\d]/g, '').replace(/^0{1,}/g,''); if(value>65535)value=65535" class="input_ss_table" id="softether_cascade_port" name="softether_cascade_port" style="width:50px" maxlength="5" value="" placeholder="" /><br>
+												    <label><input type="checkbox" id="softether_tcp_ports_check" name="softether_tcp_ports_check">其他端口列表：</label>
+												    <input type="text" oninput="this.value=this.value.replace(/[^\d ]/g, '')" class="input_ss_table" id="softether_tcp_ports" name="softether_tcp_ports" maxlength="60" value="" placeholder="空格隔开" /><p><em>提示：相同端口号无需重复填写；请确认管理器的端口号监听是否打开。</em></p>
 												</td>
 											</tr>
 											<tr>
@@ -222,14 +222,13 @@ function openurl() {
 												<label><input type="checkbox" id="softether_udp_v6" name="softether_udp_v6"><i>包含ipv6</i></label></th>
 							                    <td>
 						                            <label><input type="checkbox" id="softether_l2tp_check" name="softether_l2tp_port_check">L2TP/IPSec服务</label><br>
-							                        <label><input type="checkbox" id="softether_openvpn_udp_check" name="softether_openvpn_udp_check">OpenVPN服务（<em>会附带打开对应tcp端口，增大适应性</em>）</label><br>
-												    <label><input type="checkbox" id="softether_udp_ports_check" name="softether_udp_ports_check">其他端口：</label>   
-												    <input type="text" oninput="this.value=this.value.replace(/[^\d,]/g, '')" class="input_ss_table" id="softether_udp_ports" name="softether_udp_ports" maxlength="60" value="" placeholder="连续填写中间逗号隔开" />
+							                        <label><input type="checkbox" id="softether_openvpn_udp_check" name="softether_openvpn_udp_check">OpenVPN服务（<em>以及TCP端口</em>）</label><br>
+												    <label><input type="checkbox" id="softether_udp_ports_check" name="softether_udp_ports_check">其他端口列表：</label>   
+												    <input type="text" oninput="this.value=this.value.replace(/[^\d ]/g, '')" class="input_ss_table" id="softether_udp_ports" name="softether_udp_ports" maxlength="60" value="" placeholder="空格隔开" />
 								                </td>
 											</tr>
 										</table>
-										<p>&nbsp;&nbsp;注意：<br>&nbsp;&nbsp;&nbsp;1、若要修改端口选项和内容，先关闭softether服务。<br>
-										&nbsp;&nbsp;&nbsp;2、关于“<em>其他端口</em>”栏位：若填写多个端口号,<strong>英文逗号隔开连续填写</strong>，例如“8080,443,992”（不含引号）.此处使用iptables -m multiport模块，某些系统可能不支持.</p>
+										<p>&nbsp;&nbsp;注意：关于“<em>其他端口列表</em>”栏，多个端口号，用<strong>空格隔开</strong>，例如：8080 443 992</p>
 										<div class="apply_gen">
 											<span><input class="button_gen" id="cmdBtn" onclick="onSubmitCtrl();" type="button" value="提交"/></span>
 										</div>

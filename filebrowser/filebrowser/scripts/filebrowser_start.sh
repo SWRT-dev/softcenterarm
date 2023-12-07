@@ -1,192 +1,232 @@
 #!/bin/sh
 
 source /jffs/softcenter/scripts/base.sh
+
+# 导入数据。（注意：将合并连续的空格，有3个涉及文件的变量要避免）
 # eval `dbus export filebrowser_`
+
 alias echo_date='echo 【$(date +%Y年%m月%d日\ %X)】:'
-LOG_FILE="/tmp/filebrowser/filebrowser.log"
-lan_ipaddr=$(nvram get lan_ipaddr)
-dbpath=/jffs/softcenter/bin/filebrowser.db
-dbpath_tmp=/tmp/filebrowser/filebrowser.db
+mkdir -p /tmp/upload
+LOG_FILE="/tmp/upload/filebrowser.txt"
+bin_file=/jffs/softcenter/bin/filebrowser
+dbfile=/jffs/softcenter/bin/filebrowser.db
+port=`dbus get filebrowser_port`
+publicswitch=`dbus get filebrowser_publicswitch`
+sslswitch=`dbus get filebrowser_sslswitch`
+comment="Filebrowser_rule"
 
-port=$(dbus list filebrowser_port | grep -o "filebrowser_port.*"|awk -F\= '{print $2}')
-#enable=$(dbus list filebrowser_enable | grep -o "filebrowser_enable.*"|awk -F\= '{print $2}')
-watchdog=$(dbus list filebrowser_watchdog | grep -o "filebrowser_watchdog.*"|awk -F\= '{print $2}')
-watchdog_delay_time=$(dbus list filebrowser_delay_time | grep -o "filebrowser_delay_time.*"|awk -F\= '{print $2}')
-publicswitch=$(dbus list filebrowser_publicswitch | grep -o "filebrowser_publicswitch.*"|awk -F\= '{print $2}')
-uploaddatabase=$(dbus list filebrowser_uploaddatabase | grep -o "filebrowser_uploaddatabase.*"|awk -F\= '{print $2}')
-sslswitch=$(dbus list filebrowser_sslswitch | grep -o "filebrowser_sslswitch.*"|awk -F\= '{print $2}')
-cert=$(dbus list filebrowser_cert | grep -o "filebrowser_cert.*"|awk -F\= '{print $2}')
-key=$(dbus list filebrowser_key | grep -o "filebrowser_key.*"|awk -F\= '{print $2}')
-
-mkdir -p /tmp/filebrowser
-
-# 创建日志的链接
-log_link() {
-    mkdir -p /tmp/upload
-    if [ ! -L "/tmp/upload/filebrowser_lnk.txt" ]; then
-        ln -sf /tmp/filebrowser/filebrowser.log /tmp/upload/filebrowser_lnk.txt
-        echo_date "创建插件日志读取链接..." >> $LOG_FILE
-    fi
-}
-# 创建开机重启
+# 自启或事件触发
 auto_start() {
 	if [ ! -L "/jffs/softcenter/init.d/N99filebrowser.sh" ]; then
         ln -sf /jffs/softcenter/scripts/filebrowser_start.sh /jffs/softcenter/init.d/N99filebrowser.sh
-        echo_date "创建NAT触发任务..." >> $LOG_FILE
+        echo_date "创建NAT触发任务"
 	fi
 }
-# 创建看门狗定时
+# 看门狗动作
+watch_dog(){
+    if [ ! -n "$(pidof filebrowser)" ]; then
+        #先执行清除缓存
+        sync
+	    echo 1 > /proc/sys/vm/drop_caches
+        sleep 1s
+        echo_date "看门狗重新拉起FileBrowser"
+        start_fb
+    fi
+}
+# 关看门狗
+del_watchdog_job(){
+    local DOG=$(cru l | grep filebrowser_watchdog)
+    if [ -n "$DOG" ];then
+        echo_date "删除看门狗定时任务"
+        cru d filebrowser_watchdog
+    fi
+}
+# 开看门狗
 write_watchdog_job(){
-    local DOG=$(cru l | grep filebrowser_watchdog | grep */${watchdog_delay_time})
-    if [ "$watchdog" == "1" ]; then
-        if [ -z "$DOG" ]; then
-            echo_date "创建看门狗任务..." >> $LOG_FILE
-            cru a filebrowser_watchdog  "*/$watchdog_delay_time * * * * /bin/sh /jffs/softcenter/scripts/filebrowser_watchdog.sh"
-        fi
-    else
-        if [ -n "$DOG" ]; then
-            echo_date "未开启看门狗，删除其任务..." >> $LOG_FILE
-            sed -i '/filebrowser_watchdog/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
-        fi    
+    if [ "`dbus get filebrowser_watchdog`" != "1" ]; then
+        del_watchdog_job
+        return 1
+    fi
+    delay_time=`dbus get filebrowser_delay_time`
+    local DOG=$(cru l | grep filebrowser_watchdog | grep ${delay_time})
+    if [ -z "$DOG" ]; then
+        echo_date "创建看门狗定时任务"
+        cru a filebrowser_watchdog  "*/${delay_time} * * * * /bin/sh /jffs/softcenter/scripts/filebrowser_start.sh watch"
     fi
 }
-# 创建数据库备份定时
-write_backup_job(){
-    if [ -n "$(cru l | grep filebrowser_backupdb)" ]; then
-        return
-    else
-        echo_date "创建数据库备份任务（每隔1分钟备份1次）..." >> $LOG_FILE
-        cru a filebrowser_backupdb  "*/1 * * * * /bin/sh /jffs/softcenter/scripts/filebrowser_backupdb.sh"
-    fi
-}
-# 删除定时
-kill_cron_job() {
-	if [ -n "$(cru l | grep filebrowser_watchdog)" ]; then
-		echo_date "删除看门狗任务..." >> $LOG_FILE
-		sed -i '/filebrowser_watchdog/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
-	fi
-	if [ -n "$(cru l | grep filebrowser_backupdb)" ]; then
-		echo_date "删除数据库备份任务..." >> $LOG_FILE
-		sed -i '/filebrowser_backupdb/d' /var/spool/cron/crontabs/* >/dev/null 2>&1
+# 使iptables能作备注
+load_xt_comment(){
+    local CM=$(lsmod | grep xt_comment)
+	local OS=$(uname -r)
+	if [ -z "${CM}" -a -f "/lib/modules/${OS}/kernel/net/netfilter/xt_comment.ko" ];then
+		insmod /lib/modules/${OS}/kernel/net/netfilter/xt_comment.ko
+		echo_date "已加载xt_comment.ko内核模块"
 	fi
 }
-# 打开外网访问端口
-public_access(){
-	local open=$(iptables -S -t filter | grep INPUT | grep dport | grep tcp | grep ${port})
-	local open6=$(ip6tables -S -t filter | grep INPUT | grep dport | grep tcp | grep ${port})
-	
-	if [ "$publicswitch" == "1" ]; then
-		[ -z "${open}" ] && iptables -I INPUT -p tcp --dport $port -j ACCEPT && echo_date "开启TCP $port端口外网访问（ipv4）..." >> $LOG_FILE
-		[ -z "${open6}" ] && ip6tables -I INPUT -p tcp --dport $port -j ACCEPT && echo_date "开启TCP $port端口外网访问（ipv6)..." >> $LOG_FILE 
-	else
-		[ -n "${open}" ] && iptables -D INPUT -p tcp --dport $port -j ACCEPT && echo_date "关闭TCP $port端口外网访问（ipv4)..." >> $LOG_FILE
-		[ -n "${open6}" ] && ip6tables -D INPUT -p tcp --dport $port -j ACCEPT && echo_date "关闭TCP $port端口外网访问（ipv6)..." >> $LOG_FILE 
-	fi
+# 关闭端口
+close_port(){
+	local IPTS=$(iptables -t filter -S INPUT | grep -w "${comment}")
+    local IPTS6=$(ip6tables -t filter -S INPUT | grep -w "${comment}")
+	[ -z "${IPTS}" ] && [ -z "${IPTS6}" ] && return 1
+	local tmp_file=/tmp/Clean_FB_rule.sh
+	echo_date "关闭本插件当前打开的所有端口"
+	[ -n "${IPTS}" ] && iptables -t filter -S INPUT | grep -w "${comment}" | sed 's/-A/iptables -D/g' > "${tmp_file}"
+	[ -n "${IPTS6}" ] && ip6tables -t filter -S INPUT | grep -w "${comment}" | sed 's/-A/ip6tables -D/g' >> "${tmp_file}"
+	chmod +x "${tmp_file}"
+	/bin/sh "${tmp_file}" >/dev/null 2>&1
+	rm -f "${tmp_file}"
 }
+# 打开端口
+open_port(){
+	[ "$publicswitch" == "1" ] || return 1
+	load_xt_comment
+	echo_date "打开IPv4/IPv6 TCP端口：${port}"
+	iptables -I INPUT -p tcp --dport ${port} -m comment --comment "${comment}" -j ACCEPT >/dev/null 2>&1
+	ip6tables -I INPUT -p tcp --dport ${port} -m comment --comment "${comment}" -j ACCEPT >/dev/null 2>&1
+}
+# 恢复数据库
 upload_db(){
-	if [ -f "/tmp/upload/$uploaddatabase" ]; then
-		echo_date "执行数据库还原工作..." >> $LOG_FILE
-		#先停止filebrowser
-		close_fb
-		rm -rf /tmp/$uploaddatabase
-		cp -rf /tmp/upload/$uploaddatabase /tmp/filebrowser/$uploaddatabase
-		rm -rf /tmp/upload/$uploaddatabase
+	upload_dbname=`dbus get filebrowser_uploaddatabase`
+	if [ -f "/tmp/upload/$upload_dbname" ]; then
+		echo_date "执行数据库还原工作"
+		[ -n "$(pidof filebrowser)" ] && fb_id=1
+        kill_fb
+        mv -f "/tmp/upload/$upload_dbname" $dbfile
+        if [ "$?" == "0" ];then
+            echo_date "已完成"
+            [ "${fb_id}" == "1" ] && start_fb
+        fi
+		dbus remove filebrowser_uploaddatabase
 	else
-		echo_date "上传失败，没找到数据库文件" >> $LOG_FILE
-# 		rm -rf /tmp/upload/*.db
-		exit 1
+		echo_date "上传失败，没找到数据库文件"
 	fi	
 }
-close_fb(){
-	filebrowser_process=$(pidof filebrowser);
-	if [ -n "$filebrowser_process" ]; then
-		echo_date "关闭旧filebrowser进程..." >> $LOG_FILE
-		killall filebrowser >/dev/null 2>&1
+# 停止进程(先常规，再强制)
+kill_fb(){
+	local PID=$(pidof filebrowser)
+	if [ -n "${PID}" ];then
+        start-stop-daemon -K -p /var/run/filebrowser.pid >/dev/null 2>&1
+        echo_date "关闭当前filebrowser进程"
+        kill -9 "${PID}" >/dev/null 2>&1
 	fi
-	if [ -L "/jffs/softcenter/init.d/N99filebrowser.sh" ];then
-		echo_date "删除nat触发..." >> $LOG_FILE
-        rm -rf /jffs/softcenter/init.d/N99filebrowser.sh >/dev/null 2>&1
-    fi
-	kill_cron_job
-	# 公网开关手动置0，因dbus数据无法及时更新
-	publicswitch=0
-	public_access
-	echo_date "旧的filebrowser服务已不存在" >> $LOG_FILE
+	rm -f /var/run/filebrowser.pid
+}
+# 关闭服务并清理
+close_fb(){
+	kill_fb
+	del_watchdog_job
+	close_port
+	echo_date "已不存在运行中的filebrowser服务"
+}
+# 开启服务
+start_fb(){
+    kill_fb
+    sleep 1
+	echo_date "启动中..."
+	lan_ipaddr=$(nvram get lan_ipaddr)
+	cert=`dbus get filebrowser_cert`
+    key=`dbus get filebrowser_key`
+
+	local SSL_PARAMS Arg
+	[ "${publicswitch}" == "1" ] && lan_ipaddr=0.0.0.0
+	[ -x "$bin_file" ] || chmod 755 $bin_file
+	if [ "${sslswitch}" == "1" ]; then
+        if [ -f "${cert}" ] && [ -f "${key}" ]; then
+            # 首尾空格已在网页规避，若中间有空格，参数要使用引号
+            [ "${cert// /}" == "${cert}" ] || cert=\"${cert}\"
+            [ "${key// /}" == "${key}" ] || key=\"${key}\"
+            SSL_PARAMS="-t ${cert} -k ${key}"
+            echo_date "使用自定义证书启用TLS/SSL"
+        elif [ -f "/tmp/etc/cert.pem" ] && [ -f "/tmp/etc/key.pem" ]; then
+            SSL_PARAMS="-t /tmp/etc/cert.pem -k /tmp/etc/key.pem"
+            echo_date "使用系统内置证书启用TLS/SSL"
+        fi
+        if [ -z "${SSL_PARAMS}" ]; then
+            echo_date "证书/密钥无效或不匹配，无法启用TLS/SSL，退出程序！"
+            return 1
+        fi
+        Arg="-a $lan_ipaddr -p $port -r / -d $dbfile $SSL_PARAMS -l $LOG_FILE"
+	else
+        Arg="-a $lan_ipaddr -p $port -r / -d $dbfile -l $LOG_FILE"
+	fi
+	
+	# 启动时sh -c要执行的命令前面加一个exec，使父进程/bin/sh被子进程filebrowser替换，以免pid不一样出现异常
+	start-stop-daemon -S -q -b -m -p /var/run/filebrowser.pid -a /bin/sh -- -c "exec $bin_file $Arg >>$LOG_FILE 2>&1"
+	
+    local fb_pid
+	local i=11
+	until [ -n "$fb_pid" ]; do
+		i=$(($i - 1))
+		fb_pid=$(pidof filebrowser)
+		if [ "$i" -lt 1 ]; then
+            echo_date "启动失败！"
+			return 1
+		fi
+		sleep 1
+	done
+    echo_date "启动完成，pid：$fb_pid"
+	auto_start
+	write_watchdog_job
+	close_port
+	open_port
+}
+echo_tips(){
+    echo_date "----------------温 馨 提 示------------------------"
+    echo_date "主程序出现启动失败，或启动后又自动退出！可能原因："
+    echo_date "1、参数错误，如SSL证书无效（若已开启）等"
+    echo_date "2、内存不足，尝试释放内存或使用虚拟内存"
+    echo_date "---------------------------------------------------"
 }
 
-start_fb(){
-    filebrowser_process=$(pidof filebrowser)
-	if [ -n "$filebrowser_process" ]; then
-		killall filebrowser >/dev/null 2>&1
-	fi
-    if [ -f "$dbpath" ] && [ ! -f "$dbpath_tmp" ]; then
-		echo_date "初次/开机启动，迁移数据库至/tmp/filebrowser目录..." >> $LOG_FILE
-		cp -rf $dbpath $dbpath_tmp
-	else
-		echo_date "无需迁移数据库" >> $LOG_FILE
-	fi
-    # 启动前必要的准备
-	[ ! -L "/tmp/filebrowser/filebrowser" ] && ln -sf /jffs/softcenter/bin/filebrowser /tmp/filebrowser/filebrowser
-	publicswitch=$(dbus list filebrowser_publicswitch | grep -o "filebrowser_publicswitch.*"|awk -F\= '{print $2}')
-	log_link
-	cd /tmp/filebrowser
-	
-	echo_date "启动中...需时数秒..." >> $LOG_FILE
-	local SSL_PARAMS
-	[ "${publicswitch}" == "1" ] && lan_ipaddr=0.0.0.0
-	if [ "${sslswitch}" == "0" ]; then
-        ./filebrowser -a "$lan_ipaddr" -p $port -r / >/dev/null 2>&1 &
-	else
-        [ -f "${cert}" ] && [ -f "${key}" ] && SSL_PARAMS="-t ${cert} -k ${key}" && echo_date "将使用自定义证书启用TLS/SSL..." >> $LOG_FILE
-        [ -z "${SSL_PARAMS}" ] && [ -f "/tmp/etc/cert.pem" ] && [ -f "/tmp/etc/key.pem" ] && SSL_PARAMS="-t /tmp/etc/cert.pem -k /tmp/etc/key.pem" && echo_date "将使用系统内置证书启用TLS/SSL..." >> $LOG_FILE
-        [ -z "${SSL_PARAMS}" ] && echo_date "证书/密钥无效或不匹配，无法启用TLS/SSL，退出程序！" >> $LOG_FILE && return
-        ./filebrowser -a "$lan_ipaddr" -p $port -r / $SSL_PARAMS >/dev/null 2>&1 &
-	fi
-	sleep 5s
-	filebrowser_process=$(pidof filebrowser)
-	if [ -n "$filebrowser_process" ]; then
-		echo_date "启动完成，pid：$filebrowser_process" >> $LOG_FILE
-		auto_start
-		write_watchdog_job
-		write_backup_job
-		public_access
-	else
-        echo_date "启动失败！" >> $LOG_FILE
-		echo_date "1、可能是内存不足，建议使用虚拟内存后重试！" >> $LOG_FILE
-		echo_date "2、可能是TLS/SSL证书无效（如果已开启），检查证书后重试！" >> $LOG_FILE
-	fi	
-}
 case $ACTION in
 start)
-	echo_date "启动FileBrowser！" >> $LOG_FILE
-	start_fb
+	echo_date "启动FileBrowser" | tee -a $LOG_FILE
+	start_fb | tee -a $LOG_FILE
 	;;
 restart)
-	#echo_date "启动FileBrowser" >> $LOG_FILE
-	close_fb
-	start_fb
+    # 用于网页端开启按钮
+	true > $LOG_FILE
+	echo_date "重启FileBrowser" | tee -a $LOG_FILE
+	close_fb | tee -a $LOG_FILE
+	start_fb | tee -a $LOG_FILE
+	echo_tips | tee -a $LOG_FILE
 	;;
 stop)
-	#echo_date "关闭FileBrowser" >> $LOG_FILE
-	log_link
-	close_fb
-	dbus set filebrowser_watchdog=0
-	dbus set filebrowser_publicswitch=0
+	# 用于网页端关闭按钮
+	echo_date "关闭FileBrowser" | tee -a $LOG_FILE
+	close_fb | tee -a $LOG_FILE
+	if [ -L "/jffs/softcenter/init.d/N99filebrowser.sh" ];then
+		echo_date "删除nat触发" | tee -a $LOG_FILE
+        rm -f /jffs/softcenter/init.d/N99filebrowser.sh
+    fi
+	;;
+watch)
+	watch_dog | tee -a $LOG_FILE
 	;;
 upload)
-    log_link
-	upload_db
+	upload_db | tee -a $LOG_FILE
+	;;
+download)
+    echo_date "备份数据库文件" | tee -a $LOG_FILE
+    cp -f $dbfile /tmp/upload/filebrowser.db
+    if [ -f "/tmp/upload/filebrowser.db" ]; then
+        echo_date "文件已复制" | tee -a $LOG_FILE
+        http_response "$1"
+    else
+        echo_date "文件复制失败" | tee -a $LOG_FILE
+        http_response "fail"
+    fi
 	;;
 start_nat)
-    filebrowser_process=$(pidof filebrowser)
-    if [ -n "$filebrowser_process" ]; then
-        echo_date "NAT触发:查到pid:$filebrowser_process，正在检查外网访问开关..." >> $LOG_FILE
-        public_access
-        log_link
+    PID=$(pidof filebrowser)
+    if [ -n "$PID" ]; then
+        echo_date "NAT触发，存在pid：$PID，正检查防火墙端口" | tee -a $LOG_FILE
+        close_port | tee -a $LOG_FILE
+        open_port | tee -a $LOG_FILE
     else
-        echo_date "NAT触发：FileBrowser未运行，启动..." >> $LOG_FILE
+        echo_date "NAT触发，FileBrowser未运行，启动..." | tee -a $LOG_FILE
         logger "[软件中心] NAT触发：FileBrowser未运行，启动..."
-        start_fb
+        start_fb | tee -a $LOG_FILE
 	fi
 	;;
 esac

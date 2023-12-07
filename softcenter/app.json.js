@@ -2,14 +2,14 @@
     "apps": [
         {
             "arch": "arm", 
-            "build_date": "2023-02-17_16:13:22", 
+            "build_date": "2023-12-07_07:56:38", 
             "description": "内网穿透利器，谁用谁知道。", 
             "home_url": "Module_frps.asp", 
-            "md5": "d831f709dd34e40fd63440d9be606929", 
+            "md5": "d49148b8f19d1ca90001398c3280a783", 
             "name": "frps", 
             "tar_url": "frps/frps.tar.gz", 
             "title": "frps穿透服务器", 
-            "version": "1.9"
+            "version": "2.0"
         }, 
         {
             "arch": "arm", 
@@ -24,14 +24,14 @@
         }, 
         {
             "arch": "arm", 
-            "build_date": "2023-02-17_17:47:04", 
+            "build_date": "2023-12-07_07:59:55", 
             "description": "VPN全家桶, ver 4.30 build 9700", 
             "home_url": "Module_softether.asp", 
-            "md5": "ef2d84bb1c7b344994dbfac79c51dfa6", 
+            "md5": "8caaab38990bf7094210c01c867b4c30", 
             "name": "softether", 
             "tar_url": "softether/softether.tar.gz", 
             "title": "SoftEther_VPN_Server", 
-            "version": "2.2"
+            "version": "2.3"
         }, 
         {
             "arch": "arm", 
@@ -46,14 +46,14 @@
         }, 
         {
             "arch": "arm", 
-            "build_date": "2023-02-17_13:19:49", 
+            "build_date": "2023-12-07_08:30:07", 
             "description": "FileBrowser：您的可视化路由文件管理系统", 
             "home_url": "Module_filebrowser.asp", 
-            "md5": "b828ed6e899474ac4a4a188810813649", 
+            "md5": "90469f62264743f7a34803a457488d83", 
             "name": "filebrowser", 
             "tar_url": "filebrowser/filebrowser.tar.gz", 
             "title": "filebrowser", 
-            "version": "1.0.5"
+            "version": "1.0.6"
         }, 
         {
             "build_date": "2021-12-07_16:27:19", 
@@ -204,14 +204,14 @@
         }, 
         {
             "arch": "arm", 
-            "build_date": "2023-02-17_16:13:18", 
+            "build_date": "2023-12-07_07:54:05", 
             "description": "内网穿透利器，谁用谁知道。", 
             "home_url": "Module_frpc.asp", 
-            "md5": "757cadd31f2815773f5e6050e0669fc1", 
+            "md5": "3a623c17128fc0d3fdde292d913443c7", 
             "name": "frpc", 
             "tar_url": "frpc/frpc.tar.gz", 
             "title": "frpc穿透", 
-            "version": "2.2"
+            "version": "2.3"
         }, 
         {
             "arch": "arm", 
