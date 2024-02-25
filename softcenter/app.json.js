@@ -278,6 +278,17 @@
         }, 
         {
             "arch": "arm", 
+            "build_date": "2024-02-25_22:05:36", 
+            "description": "光猫助手: 快速设置，通过路由直接访问猫后台", 
+            "home_url": "Module_lookcat.asp", 
+            "md5": "e6d030db42f6dbc67cb7451e0bebe5ee", 
+            "name": "lookcat", 
+            "tar_url": "lookcat/lookcat.tar.gz", 
+            "title": "光猫助手", 
+            "version": "1.1"
+        }, 
+        {
+            "arch": "arm", 
             "build_date": "2023-01-08_12:42:39", 
             "description": "超强的SSH网页客户端~", 
             "home_url": "Module_shellinabox.asp", 
