@@ -29,6 +29,7 @@
 .show-btn1, .show-btn2 {
     border: 1px solid #222;
     background: #576d73;
+	background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 10px 3.75px;
@@ -37,6 +38,8 @@
     }
 .active {
     background: #2f3a3e;
+    background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
+    border: 1px solid #91071f; /* W3C rogcss*/
 }
 .close {
     background: red;
@@ -81,6 +84,7 @@
 .frpc_btn {
     border: 1px solid #222;
     background: linear-gradient(to bottom, #003333  0%, #000000 100%); /* W3C */
+	background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 5px 5px;
@@ -90,6 +94,7 @@
 .frpc_btn:hover {
     border: 1px solid #222;
     background: linear-gradient(to bottom, #27c9c9  0%, #279fd9 100%); /* W3C */
+	background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 5px 5px;
@@ -104,6 +109,8 @@
 	text-transform:none;
 	margin-top:5px;
 	overflow:scroll;
+	background:transparent; /* W3C rogcss*/
+	border:1px solid #91071f; /* W3C rogcss*/
 }
 .formbottomdesc {
     margin-top:10px;
