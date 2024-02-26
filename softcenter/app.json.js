@@ -13,6 +13,17 @@
         }, 
         {
             "arch": "arm", 
+            "build_date": "2024-02-26_09:47:32", 
+            "description": "简便高效的异地组网、内网穿透工具", 
+            "home_url": "Module_vnt.asp", 
+            "md5": "74448090337ec1f122642cf33c180239", 
+            "name": "vnt", 
+            "tar_url": "vnt/vnt.tar.gz", 
+            "title": "vnt", 
+            "version": "1.0"
+        }, 
+        {
+            "arch": "arm", 
             "build_date": "2022-12-26_08:38:34", 
             "description": "tailscale", 
             "home_url": "Module_tailscale.asp", 
