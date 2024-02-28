@@ -278,6 +278,17 @@
             "version": "3.1"
         }, 
         {
+            "arch": "arm", 
+            "build_date": "2024-02-28_11:58:41", 
+            "description": "Cloudflare Tunnel 客户端(以前称为 Argo Tunnel)", 
+            "home_url": "Module_cloudflared.asp", 
+            "md5": "b8ee74c8164bdefcbba41ff1476edf0a", 
+            "name": "cloudflared", 
+            "tar_url": "cloudflared/cloudflared.tar.gz", 
+            "title": "cloudflared", 
+            "version": "1.0"
+        }, 
+        {
             "build_date": "2020-08-13_09:59:26", 
             "description": "这是一只自动帮你签到的dog", 
             "home_url": "Module_qiandao.asp", 
