@@ -205,16 +205,16 @@ fun_updatevnts(){
 tag=""
 curltest=`which curl`
 if [ -z "$curltest" ] || [ ! -s "`which curl`" ] ; then
-   tag="$( wget -T 5 -t 3 $hsts --user-agent "$user_agent" --max-redirect=0 --output-document=-  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep 'tag_name' | cut -d\" -f4 )"
-   [ -z "$tag" ] && tag="$( wget -T 5 -t 3 $hsts --user-agent "$user_agent" --quiet --output-document=-  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep 'tag_name' | cut -d\" -f4 )"
-   [ -z "$tag" ] && tag="$( wget -T 5 -t 3 $hsts --output-document=-  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep 'tag_name' | cut -d\" -f4 )"
+   tag="$( wget -T 5 -t 3 $hsts --user-agent "$user_agent" --max-redirect=0 --output-document=-  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"' )"
+   [ -z "$tag" ] && tag="$( wget -T 5 -t 3 $hsts --user-agent "$user_agent" --quiet --output-document=-  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"' )"
+   [ -z "$tag" ] && tag="$( wget -T 5 -t 3 $hsts --output-document=-  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"' )"
 else
-    tag="$( curl --connect-timeout 3 --user-agent "$user_agent"  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep 'tag_name' | cut -d\" -f4 )"
-    [ -z "$tag" ] && tag="$( curl -L --connect-timeout 3 --user-agent "$user_agent" -s  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep 'tag_name' | cut -d\" -f4 )"
-    [ -z "$tag" ] && tag="$( curl -k -L --connect-timeout 20 -s https://api.github.com/repos/lmq8267/vnts/releases/latest | grep 'tag_name' | cut -d\" -f4 )"
+    tag="$( curl --connect-timeout 3 --user-agent "$user_agent"  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"' )"
+    [ -z "$tag" ] && tag="$( curl -L --connect-timeout 3 --user-agent "$user_agent" -s  https://api.github.com/repos/lmq8267/vnts/releases/latest  2>&1 | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"' )"
+    [ -z "$tag" ] && tag="$( curl -k -L --connect-timeout 20 -s https://api.github.com/repos/lmq8267/vnts/releases/latest | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"' )"
 fi
-[ -z "$tag" ] && tag="$( curl -k -L --connect-timeout 20 --silent https://api.github.com/repos/lmq8267/vnts/releases/latest | grep 'tag_name' | cut -d\" -f4 )"
-[ -z "$tag" ] && tag="$(curl -k --silent \"https://api.github.com/repos/lmq8267/vnts/releases/latest\" | grep '\"tag_name\":' | sed -E 's/.*\"([^\"]+)\".*/\1/')"
+[ -z "$tag" ] && tag="$( curl -k -L --connect-timeout 20 --silent https://api.github.com/repos/lmq8267/vnts/releases/latest | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"' )"
+[ -z "$tag" ] && tag="$(curl -k --silent \"https://api.github.com/repos/lmq8267/vnts/releases/latest\" | grep -E 'tag_name\":\"[0-9]+\.[0-9]+\.[0-9]+' -o |head -n 1| tr -d 'tag_name\": \"')"
 logg "开始下载更新版本.." "vnts" 
 [ -x "${vnts_path}" ] || chmod 755 ${vnts_path}
 vnts_ver="$(${vnts_path} -V | awk '{print $2}')"
