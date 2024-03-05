@@ -2,7 +2,7 @@
 
 
 MODULE=vnt
-VERSION=1.0
+VERSION=1.1
 TITLE=vnt
 DESCRIPTION="简便高效的异地组网、内网穿透工具"
 HOME_URL=Module_vnt.asp

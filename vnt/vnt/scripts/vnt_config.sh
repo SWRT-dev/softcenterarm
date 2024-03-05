@@ -140,10 +140,15 @@ onkillvnts(){
     fi
     rm -f /var/run/vnts.pid
     [ -n "$(cru l | grep vnts_rules)" ] && cru d vnts_rules
+    [ -n "$(cru l | grep vnts_rules2)" ] && cru d vnts_rules2
     iptables -D INPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
-    iptables -D INPUT -p udp --dport $vnts_port-j ACCEPT 2>/dev/null
+    iptables -D INPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
     ip6tables -D INPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
     ip6tables -D INPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
+    iptables -D OUTPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
+    iptables -D OUTPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
+    ip6tables -D OUTPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
+    ip6tables -D OUTPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
 } 
 # 停止并清理
 onstop(){
@@ -306,8 +311,8 @@ EOF
     [ "$vnt_passmode" != "off" ] && vntcmd="$vntcmd --model $vnt_passmode "
     [ "$vnt_finger_enable" = "1" ] && vntcmd="$vntcmd --finger "
     [ "$vnt_relay_enable" = "1" ] && vntcmd="$vntcmd --relay "
-    [ "$vnt_mn_enable" = "1" ] && vntcmd="$vntcmd --no-proxy "
-    [ "$vnt_W_enable" = "1" ] && vntcmd="$vntcmd -m "
+    [ "$vnt_mn_enable" = "1" ] && vntcmd="$vntcmd -m "
+    [ "$vnt_first_latency_enable" = "1" ] && vntcmd="$vntcmd --first-latency"
     if [ ! -z "$vnt_localadd" ] ; then
        if echo "$vnt_localadd" | grep -q '|'; then
           localadd=""
@@ -364,7 +369,7 @@ EOF
     cd $(dirname $vnt_path)
     
     killall vnt-cli 2>/dev/null
-    ./vnt-cli ${vntcmd} >>/home/root/log/vnt-cli.log 2>&1
+    ./vnt-cli ${vntcmd} >>/home/root/log/vnt-cli.log 2>&1 &
    sleep 5
    [ ! -z "$(pidof vnt-cli)" ] && logg "vnt-cli_${vntcli_ver}客户端启动成功！" "vnt-cli" 
    echo `date +%s` > /tmp/vnt_time
@@ -438,19 +443,23 @@ EOF
     cd $(dirname $vnts_path)
     killall vnts 2>/dev/null
     rm -rf /var/run/vnts.pid
-    start-stop-daemon --start --quiet --make-pidfile --pidfile /var/run/vnts.pid --background --startas /bin/sh -- -c  "${vnts_path} ${vntscmd} >>/home/root/log/vnts.log 2>&1"
+    start-stop-daemon --start --quiet --make-pidfile --pidfile /var/run/vnts.pid --background --startas /bin/sh -- -c  "${vnts_path} ${vntscmd} >>/home/root/log/vnts.log 2>&1 &"
    sleep 5
    [ ! -z "$(pidof vnts)" ] && logg "vnts_${vnts_ver}服务端启动成功！" "vnts"
    echo `date +%s` > /tmp/vnts_time
    iptables -I INPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
-   iptables -I INPUT -p udp --dport $vnts_port-j ACCEPT 2>/dev/null
+   iptables -I INPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
    ip6tables -I INPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
    ip6tables -I INPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
+   iptables -I OUTPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
+   iptables -I OUTPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
+   ip6tables -I OUTPUT -p tcp --dport $vnts_port -j ACCEPT 2>/dev/null
+   ip6tables -I OUTPUT -p udp --dport $vnts_port -j ACCEPT 2>/dev/null
    if [ -z "$(cru l | grep vnts_rules)" ] && [ ! -z "$vnts_port" ] ; then
-      cru a vnts_rules "*/2 * * * * iptables -C INPUT -p tcp --dport $vnts_port -j ACCEPT || iptables -I INPUT -p tcp --dport $vnts_port -j ACCEPT"
-      cru a vnts_rules "*/2 * * * * iptables -C INPUT -p udp --dport $vnts_port -j ACCEPT || iptables -I INPUT -p udp --dport $vnts_port -j ACCEPT"
-      cru a vnts_rules "*/2 * * * * ip6tables -C INPUT -p tcp --dport $vnts_port -j ACCEPT || ip6tables -I INPUT -p tcp --dport $vnts_port -j ACCEPT"
-      cru a vnts_rules "*/2 * * * * ip6tables -C INPUT -p udp --dport $vnts_port -j ACCEPT || ip6tables -I INPUT -p udp --dport $vnts_port -j ACCEPT"
+      cru a vnts_rules "*/2 * * * * iptables -C INPUT -p tcp --dport $vnts_port -j ACCEPT || iptables -I INPUT -p tcp --dport $vnts_port -j ACCEPT ; iptables -C INPUT -p udp --dport $vnts_port -j ACCEPT || iptables -I INPUT -p udp --dport $vnts_port -j ACCEPT ; ip6tables -C INPUT -p tcp --dport $vnts_port -j ACCEPT || ip6tables -I INPUT -p tcp --dport $vnts_port -j ACCEPT ; ip6tables -C INPUT -p udp --dport $vnts_port -j ACCEPT || ip6tables -I INPUT -p udp --dport $vnts_port -j ACCEPT"
+   fi
+   if [ -z "$(cru l | grep vnts_rules2)" ] && [ ! -z "$vnts_port" ] ; then
+      cru a vnts_rules2 "*/2 * * * * iptables -C OUTPUT -p tcp --dport $vnts_port -j ACCEPT || iptables -I OUTPUT -p tcp --dport $vnts_port -j ACCEPT ; iptables -C OUTPUT -p udp --dport $vnts_port -j ACCEPT || iptables -I OUTPUT -p udp --dport $vnts_port -j ACCEPT ; ip6tables -C OUTPUT -p tcp --dport $vnts_port -j ACCEPT || ip6tables -I OUTPUT -p tcp --dport $vnts_port -j ACCEPT ; ip6tables -C OUTPUT -p udp --dport $vnts_port -j ACCEPT || ip6tables -I OUTPUT -p udp --dport $vnts_port -j ACCEPT"
    fi
 }
 

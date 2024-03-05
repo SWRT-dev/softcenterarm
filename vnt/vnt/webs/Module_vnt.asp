@@ -28,7 +28,7 @@
 .show-btn1, .show-btn2, .show-btn3 {
     border: 1px solid #222;
     background: #576d73;
-	background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
+    background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 10px 3.75px;
@@ -85,7 +85,7 @@
 .info_btn {
     border: 1px solid #222;
     background: linear-gradient(to bottom, #003333  0%, #000000 100%); /* W3C */
-	background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
+    background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 5px 5px;
@@ -95,7 +95,7 @@
 .info_btn:hover {
     border: 1px solid #222;
     background: linear-gradient(to bottom, #27c9c9  0%, #279fd9 100%); /* W3C */
-	background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
+    background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
     font-size:10pt;
     color: #fff;
     padding: 5px 5px;
@@ -113,7 +113,7 @@ input[type=button]:focus {
 .vnt_custom_btn {
     border: 1px solid #222;
     background: linear-gradient(to bottom, #003333 0%, #000000 100%);
-	background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
+    background: linear-gradient(to bottom, #91071f  0%, #700618 100%); /* W3C rogcss*/
     font-size: 10pt;
     color: #fff;
     padding: 5px 5px;
@@ -123,7 +123,7 @@ input[type=button]:focus {
 
 .vnt_custom_btn:hover {
     background: linear-gradient(to bottom, #27c9c9 0%, #279fd9 100%);
-	background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
+    background: linear-gradient(to bottom, #cf0a2c  0%, #91071f 100%); /* W3C rogcss*/
 }
 </style>
 <script>
@@ -308,7 +308,6 @@ function save() {
 		if(E("vnt_passmode").value == "off"){
             E("vnt_key").value = "";
 		}
-	
 	showLoading(3);
 
 	//input
@@ -656,9 +655,9 @@ function toggle_func() {
 	$("#vnt_passmode").change(
 		function(){
 		if(E("vnt_passmode").value == "off"){
-			E("vnt_key").style.display = "none";
+			E("vnt_keys").style.display = "none";
 		}else{
-		    E("vnt_key").style.display = "";
+		    E("vnt_keys").style.display = "";
 		}
 	});
 }
@@ -671,9 +670,9 @@ function update_visibility(){
         E("static_ip").style.display = "none";
     }
 	if(db_vnt["vnt_passmode"] == "off"){
-	    E("vnt_key").style.display = "none";
+	    E("vnt_keys").style.display = "none";
 	}else{
-		E("vnt_key").style.display = "";
+		E("vnt_keys").style.display = "";
 	}
 }
 document.addEventListener('DOMContentLoaded', function() {
@@ -1267,11 +1266,11 @@ function get_installog(s) {
                                                     <option value="aes_ecb">aes_ecb</option>
 													<option value="sm4_cbc">sm4_cbc</option>
 													<option value="aes_cbc">aes_cbc</option>
-													<option value="static">aes_gcm</option>
+													<option value="aes_gcm">aes_gcm</option>
                                                 </select>
                                             </td>
                                         </tr>
-                                        <tr id="vnt_key" style="display: none;">
+                                        <tr id="vnt_keys" style="display: none;">
                                             <th width="20%"><a class="hintstyle" href="javascript:void(0);" onclick="openssHint(20)">加密密钥</a></th>
                                             <td>
                                                 <input type="password" name="vnt_key" id="vnt_key" class="input_ss_table" autocomplete="new-password" autocorrect="off" autocapitalize="off" value="" onBlur="switchType(this, false);" onFocus="switchType(this, true);" placeholder="" />
@@ -1626,7 +1625,3 @@ function get_installog(s) {
 <div id="footer"></div>
 </body>
 </html>
-
-
-
-
