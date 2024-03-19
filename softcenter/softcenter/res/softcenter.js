@@ -28,13 +28,22 @@ String.prototype.capitalizeFirstLetter = function() {
 }
 
 var Base64;
-if (typeof btoa == "Function") {
+if (typeof btoa == "Function" || typeof btoa == "function") {
 	Base64 = {
 		encode: function(e) {
-			return btoa(e);
+			return btoa(unescape(encodeURIComponent(e)));
 		},
 		decode: function(e) {
-			return atob(e);
+			return decodeURIComponent(escape(atob(e)));
+		}
+	};
+} else if (typeof window.btoa == "Function" || typeof window.btoa == "function") {
+	Base64 = {
+		encode: function(e) {
+			return window.btoa(unescape(encodeURIComponent(e)));
+		},
+		decode: function(e) {
+			return decodeURIComponent(escape(window.atob(e)));
 		}
 	};
 } else {
