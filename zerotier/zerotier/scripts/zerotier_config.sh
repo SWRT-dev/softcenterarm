@@ -38,7 +38,7 @@ start_instance() {
 		rm -f $config_path/identity.public
 	fi
 
-	add_join $zerotier_id
+	#add_join $zerotier_id
 
 	/jffs/softcenter/bin/zerotier-one -d $args $config_path
 
@@ -51,9 +51,9 @@ start_instance() {
 	rules
 }
 
-add_join() {
-		touch $config_path/networks.d/$1.conf
-}
+#add_join() {
+#		touch $config_path/networks.d/$1.conf
+#}
 
 
 rules() {
@@ -159,11 +159,11 @@ web_submit(){
 }
 
 join_network(){
-	/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one join $zerotier_id
+	/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one join $zerotier_join_id
 }
 
 leave_network(){
-	/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one leave $zerotier_id
+	/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one leave $zerotier_leave_id
 }
 
 upload_moon(){
