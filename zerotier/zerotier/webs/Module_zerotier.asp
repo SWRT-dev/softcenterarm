@@ -270,11 +270,11 @@ function conf2obj(){
 			E(params_chk[i]).checked = dbus[params_chk[i]] != "0";
 		}
 	}
-	//for (var i = 0; i < params_inp.length; i++) {
-	//	if (dbus[params_inp[i]]) {
-	//		$("#" + params_inp[i]).val(dbus[params_inp[i]]);
-	//	}
-	//}
+	for (var i = 0; i < params_inp.length; i++) {
+		if (dbus[params_inp[i]]) {
+			$("#" + params_inp[i]).val(dbus[params_inp[i]]);
+		}
+	}
 	if (dbus["zerotier_version"]){
 		E("zerotier_version").innerHTML = " - " + dbus["zerotier_version"];
 	}

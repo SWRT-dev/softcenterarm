@@ -37,24 +37,24 @@ start_instance() {
 		echo "$secret" >$config_path/identity.secret
 		rm -f $config_path/identity.public
 	fi
-
-	#add_join $zerotier_id
-
+	echo_date "启动主程序..."
 	/jffs/softcenter/bin/zerotier-one -d $args $config_path
-
-	if [ -n "$zerotier_orbit_moon_id" ];then
-		/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one  orbit $zerotier_orbit_moon_id $zerotier_orbit_moon_id
-		kill_z
-		/jffs/softcenter/bin/zerotier-one -d $args $config_path
+	if [ -n "$zerotier_join_id" ];then
+		echo_date "加入网络... $zerotier_join_id"
+		sleep 1
+		join_network
 	fi
-
-	rules
+	if [ "$(ls $config_path/networks.d)" != "" ];then
+		if [ -n "$zerotier_orbit_moon_id" ];then
+			echo_date "加入moon... $zerotier_orbit_moon_id"
+			/jffs/softcenter/bin/zerotier-cli -D/jffs/softcenter/etc/zerotier-one  orbit $zerotier_orbit_moon_id $zerotier_orbit_moon_id
+			kill_z
+			/jffs/softcenter/bin/zerotier-one -d $args $config_path
+		fi
+		echo_date "设置防火墙规则..."
+		rules
+	fi
 }
-
-#add_join() {
-#		touch $config_path/networks.d/$1.conf
-#}
-
 
 rules() {
 	local zt0 zeroarp zerotra ip_segment
@@ -195,9 +195,11 @@ restart)
 	;;
 orbit_moon)
 	orbit_moon >> $LOGPATH
+	echo XU6J03M6 >> $LOGPATH
 	;;
 deorbit_moon)
 	deorbit_moon >> $LOGPATH
+	echo XU6J03M6 >> $LOGPATH
 	;;
 web_submit)
 	web_submit >> $LOGPATH
@@ -205,9 +207,11 @@ web_submit)
 	;;
 leave_network)
 	leave_network >> $LOGPATH
+	echo XU6J03M6 >> $LOGPATH
 	;;
 join_network)
 	join_network >> $LOGPATH
+	echo XU6J03M6 >> $LOGPATH
 	;;
 upload_moon)
 	upload_moon >> $LOGPATH
