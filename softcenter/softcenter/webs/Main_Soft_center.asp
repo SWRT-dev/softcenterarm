@@ -283,6 +283,7 @@ var TIMEOUT_SECONDS = 18;
 var softInfo = null;
 var count_down;
 var refresh_flag;
+var stop_scroll = 0;
 var syncRemoteSuccess = 0; //判断是否进入页面后已经成功进行远端同步
 var currState = {
 	"installing": false,
@@ -660,44 +661,85 @@ function menu_hook(title, tab) {
 function notice_show(){
 	if(odmpid != ""){
         if(modelname == productid)
-			document.getElementById("modelid").innerHTML ="Software Center " + modelname ;
+			document.getElementById("modelid").innerHTML =modelname ;
 		else
-			document.getElementById("modelid").innerHTML ="Software Center " + odmpid ;
+			document.getElementById("modelid").innerHTML =odmpid ;
 		if(odmpid != based_modelid)
 			document.getElementById("modelid").innerHTML += " (base model: " + based_modelid + ")";
 	}else
-		document.getElementById("modelid").innerHTML ="Software Center " + productid ;
-
-	var pushlog;
+		document.getElementById("modelid").innerHTML =productid ;
+	document.getElementById("modelid").innerHTML += " " + dict["Software Center"] + " - " + db_softcenter_["softcenter_arch"] + " platform";
+	var msg_file;
 	switch ("<% nvram_get("preferred_lang"); %>") {
-	case "EN":
-		pushlog="push_message_en.json.js";
+	case "CN":
+	case "TW":
+		msg_file="softcenter_message.json";
 		break
 	default:
-		pushlog="push_message.json.js";
+		msg_file="softcenter_message_en.json";
 	}
-	var pushurl = 'https://sc.paldier.com/' + scarch + '/softcenter/' + pushlog;
+	var msg_url = 'https://sc.paldier.com/' + scarch + '/' + msg_file + '?_=' + new Date().getTime();
 	$.ajax({
-		url: pushurl,
+		url: msg_url,
 		type: 'GET',
-		dataType: 'jsonp',
+		dataType: 'json',
+		cache: false,
 		success: function(res) {
-			$("#push_titile").html(res.title);
-			$("#push_content1").html(res.content1);
-			if (res.content2) {
-				document.getElementById("push_content2_li").style.display = "";
-				$("#push_content2").html(res.content2);
+			var rand_1 = parseInt(Math.random() * 100)
+			if (res["msg_1"] && res["switch_1"]){
+				if (rand_1 < res["switch_1"]){
+					$("#fixed_msg").append('<li id="msg_1" style="list-style: none;height:23px">' + res["msg_1"] + '</li>');
+				}
 			}
-			if (res.content3) {
-				document.getElementById("push_content3_li").style.display = "";
-				$("#push_content3").html(res.content3);
+			if (res["msg_2"] && res["switch_2"]){
+				if (rand_1 < res["switch_2"]){
+					$("#fixed_msg").append('<li id="msg_2" style="list-style: none;height:23px">' + res["msg_2"] + '</li>');
+				}
 			}
-			if (res.content4) {
-				document.getElementById("push_content4_li").style.display = "";
-				$("#push_content4").html(res.content4);
+			var ads_count = 0;
+			var rand_2 = parseInt(Math.random() * 100)
+			for(var i = 3; i < 10; i++){
+				if (res["msg_" + i] && res["switch_" + i]){
+					if (rand_2 < res["switch_" + i]){
+						$("#scroll_msg").append('<li id="msg_' + i + '" style="list-style: none;height:23px">' + res["msg_" + i] + '</li>');
+						ads_count++;
+					}
+				}
 			}
+			if (ads_count == 0) return;
+			if (ads_count <= 2){
+				$("#scroll_msg").css("height", (ads_count * 23) + "px");
+				return;
+			}
+			if (res["scroll_line"]){
+				$("#scroll_msg").css("height", (res["scroll_line"] * 23) + "px");
+			}else{
+				$("#scroll_msg").css("height", "23px");
+			}
+			$("#scroll_msg").on("mouseover", function() {
+				stop_scroll = 1;
+			});
+			$("#scroll_msg").on("mouseleave", function() {
+				stop_scroll = 0;
+			});
+			if (res["ads_time"]){
+				setInterval("scroll_msg();", res["ads_time"]);
+			}else{
+				setInterval("scroll_msg();", 5000);
+			}
+		},
+		error: function(XmlHttpRequest, textStatus, errorThrown){
+			$("#fixed_msg").append('<li id="msg_1" style="list-style: none;height:23px">如果你看到这个页面说明主服务器连接不上,如果获取不到在线版本说明节点服务器连接不上！</li>');
+			console.log(XmlHttpRequest.responseText);
 		}
 	});
+}
+function scroll_msg() {
+	if(stop_scroll == 0) {
+		$('#scroll_msg').stop().animate({scrollTop: 23}, 500, 'swing', function() {
+			$(this).find('li:last').after($('li:first', this));
+		});
+	}
 }
 function count_down_close() {
 	if (count_down == "0") {
@@ -884,18 +926,10 @@ function set_skin(){
 																			<td>
 																				<ul style="padding-left:25px;">
 																					<h2 id="push_titile"><em>软件中心&nbsp;-&nbsp;by&nbsp;SWRTdev</em></h2>
-																					<li>
-																						<h4 id="push_content1" ><font color='#1E90FF'>交流反馈:&nbsp;&nbsp;</font><a href='https://github.com/SWRT-dev/softcenter' target='_blank'><em>1.软件中心GitHub项目</em></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href='https://t.me/merlinchat' target='_blank'><em>2.加入telegram群</em></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href='https://www.right.com.cn/forum/forum-173-1.html' target='_blank'><em>3.恩山论坛插件版块</em></a></h4>
-																					</li>
-																					<li id="push_content2_li">
-                                                                                    <h4 id="push_content2">如果你看到这个页面说明主服务器连接不上,如果获取不到在线版本说明节点服务器连接不上！</h4>
-																					</li>
-																					<li id="push_content3_li" style="display: none;">
-																						<h4 id="push_content3"></h4>
-																					</li>
-																					<li id="push_content4_li" style="display: none;">
-																						<h4 id="push_content4"></h4>
-																					</li>
+																					<ul id="fixed_msg" style="padding:0;margin:0;line-height:1.8;">
+																					</ul>
+																					<ul id="scroll_msg" style="padding:0;margin:0;line-height:1.8;overflow: hidden;">
+																					</ul>
 																					<li>
 																						<h5><font color='#1E90FF' sclang>Current version:</font><span id="spnCurrVersion"></span>&nbsp;&nbsp;<font color='#1E90FF' sclang>Latest version:</font><span id="spnOnlineVersion"></span>
 																						<input sclang type="button" id="updateBtn" value="Update" style="display:none" /></h5>
