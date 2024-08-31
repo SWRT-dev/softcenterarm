@@ -333,14 +333,14 @@
         }, 
         {
             "arch": "arm", 
-            "build_date": "2023-02-17_22:56:57", 
+            "build_date": "2024-09-01_07:29:49", 
             "description": "从路由器推送状态及通知的工具", 
             "home_url": "Module_serverchan.asp", 
-            "md5": "272308626853c277ba68646d27b500d9", 
+            "md5": "bd0086106230dc96659053c430a1e225", 
             "name": "serverchan", 
             "tar_url": "serverchan/serverchan.tar.gz", 
             "title": "ServerChan微信推送", 
-            "version": "2.5"
+            "version": "2.6"
         }, 
         {
             "arch": "arm", 
