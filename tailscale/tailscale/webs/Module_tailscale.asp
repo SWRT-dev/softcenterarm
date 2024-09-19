@@ -8,7 +8,7 @@
 <meta HTTP-EQUIV="Expires" CONTENT="-1">
 <link rel="shortcut icon" href="images/favicon.png">
 <link rel="icon" href="images/favicon.png">
-<title>软件中心 - Tailscale</title>
+<title sclang>Tailscale</title>
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="css/element.css">
@@ -23,6 +23,7 @@
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/res/softcenter.js"></script>
 <script type="text/javascript" src="/help.js"></script>
+<script type="text/javascript" src="/js/i18n.js"></script>
 <style>
 a:focus {
 	outline: none;
@@ -197,6 +198,7 @@ String.prototype.myReplace = function(f, e){
 
 function init() {
 	show_menu(menu_hook);
+	sc_load_lang("tailscale");
 	set_skin();
 	get_dbus_data();
 }
@@ -380,7 +382,7 @@ function save(){
 }
 function showWBLoadingBar(){
 	document.scrollingElement.scrollTop = 0;
-	E("loading_block_title").innerHTML = "&nbsp;&nbsp;tailscale日志信息";
+	E("loading_block_title").innerHTML = "&nbsp;&nbsp;tailscale" + dict["Log"];
 	E("LoadingBar").style.visibility = "visible";
 	var page_h = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
 	var page_w = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
@@ -402,10 +404,10 @@ function count_down_close() {
 		hideWBLoadingBar();
 	}
 	if (count_down < 0) {
-		E("ok_button1").value = "手动关闭"
+		E("ok_button1").value = dict["Close"];
 		return false;
 	}
-	E("ok_button1").value = "自动关闭（" + count_down + "）"
+	E("ok_button1").value = dict["Auto Close"] + "(" + count_down + ")"
 		--count_down;
 	setTimeout("count_down_close();", 1000);
 }
@@ -450,15 +452,15 @@ function get_log(flag){
 			retArea.scrollTop = retArea.scrollHeight;
 		},
 		error: function(xhr) {
-			E("loading_block_title").innerHTML = "暂无日志信息 ...";
-			E("log_content").value = "日志文件为空，请关闭本窗口！";
+			E("loading_block_title").innerHTML = dict["No log messages"];
+			E("log_content").value = dict["Log file is empty, please close this window"];
 			E("ok_button").style.visibility = "visible";
 			return false;
 		}
 	});
 }
 function menu_hook(title, tab) {
-	tabtitle[tabtitle.length - 1] = new Array("", "软件中心", "离线安装", "tailscale");
+	tabtitle[tabtitle.length - 1] = new Array("", dict["Software Center"], dict["Offline installation"], "Tailscale");
 	tablink[tablink.length - 1] = new Array("", "Main_Soft_center.asp", "Main_Soft_setting.asp", "Module_tailscale.asp");
 }
 function close_status() {
@@ -641,7 +643,7 @@ function mOut(obj){
 					<textarea cols="50" rows="26" wrap="on" readonly="readonly" id="log_content" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ></textarea>
 				</div>
 				<div id="ok_button" class="apply_gen" style="background:#000;visibility:hidden;">
-					<input id="ok_button1" class="button_gen" type="button" onclick="hideWBLoadingBar()" value="确定">
+					<input sclang id="ok_button1" class="button_gen" type="button" onclick="hideWBLoadingBar()" value="OK">
 				</div>
 				</td>
 			</tr>
@@ -649,24 +651,24 @@ function mOut(obj){
 	</div>
 	<!--============================this is the popup area for tailscale status=================================-->
 	<div id="tailscale_status_div" class="content_status">
-		<div class="user_title">tailscale status 状态</div>
-		<div style="margin-left:15px"><i>此处展示命令：tailscale status 显示的内容。</i></div>
+		<div class="user_title" sclang>Tailscale status</div>
+		<div style="margin-left:15px" sclang><i>Display the message output of the command 'tailscale status' here</i></div>
 		<div style="margin: 10px 10px 10px 15px;width:918px;text-align:center;overflow:hidden;border-top:1px solid #818181;padding-top:10px">
 			<textarea cols="63" rows="18" wrap="off" id="ts_status" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
 		</div>
 		<div style="margin-top:5px;padding-bottom:10px;width:100%;text-align:center;">
-			<input class="button_gen" type="button" onclick="close_status();" value="返回主界面">
+			<input sclang class="button_gen" type="button" onclick="close_status();" value="Close this window">
 		</div>
 	</div>
 	<!--============================this is the popup area for tailscale netcheck=================================-->
 	<div id="tailscale_netcheck_div" class="content_status">
-		<div class="user_title">tailscale netcheck 状态</div>
-		<div style="margin-left:15px"><i>此处展示命令：tailscale netcheck 显示的内容。</i></div>
+		<div class="user_title" sclang>Tailscale netcheck</div>
+		<div style="margin-left:15px" sclang><i>Display the message output of the command 'tailscale netcheck' here</i></div>
 		<div style="margin: 10px 10px 10px 15px;width:918px;text-align:center;overflow:hidden;border-top:1px solid #818181;padding-top:10px">
 			<textarea cols="63" rows="30" wrap="off" id="ts_check" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
 		</div>
 		<div style="margin-top:5px;padding-bottom:10px;width:100%;text-align:center;">
-			<input class="button_gen" type="button" onclick="close_netcheck();" value="返回主界面">
+			<input sclang class="button_gen" type="button" onclick="close_netcheck();" value="Close this window">
 		</div>
 	</div>
 	<!--=============================================================================================================-->
@@ -692,19 +694,19 @@ function mOut(obj){
 										</div>
 										<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 										<div class="SimpleNote">
-											<span>Tailscale是一款基于wiregurad协议的零配置安全组网工具。</span>
-											<span><a type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(1)" style="margin-left:5px;">查看插件日志</a></span>
-											<span><a type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(2)" style="margin-left:5px;">tailscaled运行日志</a></span>
+											<span sclang>Tailscale is a WireGuard-based app that makes secure, private networks easy for teams of any scale</span>
+											<span><a type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(1)" style="margin-left:5px;" sclang>tailscale log</a></span>
+											<span><a type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(2)" style="margin-left:5px;" sclang>tailscaled running log</a></span>
 										</div>
 										<div id="tailscale_main">
 											<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" class="FormTable">
 												<thead>
 													<tr>
-														<td colspan="2">tailscale - 状态/控制</td>
+														<td colspan="2" sclang>tailscale - Status/Settings</td>
 													</tr>
 												</thead>
 												<tr id="switch_tr">
-													<th>开关</th>
+													<th sclang>Enable</th>
 													<td>
 														<div class="switch_field" style="display:table-cell;float: left;">
 															<label for="tailscale_enable">
@@ -720,32 +722,32 @@ function mOut(obj){
 													</td>
 												</tr>
 												<tr id="tailscale_status_tr" style="display:none;">
-													<th>tailscaled 运行状态</th>
+													<th sclang>tailscaled status</th>
 													<td>
 														<span style="margin-left:4px" id="tailscale_status"></span>
 													</td>
 												</tr>
 												<tr id="tailscale_state_tr" style="display:none;">
-													<th>tailnet 状态</th>
+													<th sclang>tailnet status</th>
 													<td>
 														<span style="margin-left:4px" id="tailnet_state"></span>
 													</td>
 												</tr>
 												<tr id="tailscale_console_tr">
-													<th>tailscale 控制台</th>
+													<th sclang>tailscale admin console</th>
 													<td>
 														<a type="button" id="tailscale_website" class="ks_btn" href="https://login.tailscale.com/admin" target="_blank" style="margin-left:2px">Admin console</a>
 													</td>
 												</tr>
 												<tr id="tailscale_status_tr">
-													<th>连接状态</th>
+													<th sclang>Connection Status</th>
 													<td>
 														<a type="button" id="tailscale_status" class="ks_btn" onclick="tailscale_status();" target="_blank" style="margin-left:2px;cursor:pointer;">tailscale status</a>
 														<a type="button" id="tailscale_netcheck" class="ks_btn" onclick="tailscale_netcheck();" target="_blank" style="margin-left:2px;cursor:pointer;">tailscale netcheck</a>
 													</td>
 												</tr>
 												<tr>
-													<th><a onmouseover="mOver(this, 1)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">使用网络</a></th>
+													<th><a onmouseover="mOver(this, 1)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);" sclang>Network Type</a></th>
 													<td>
 														ipv4
 														<input type="checkbox" id="tailscale_ipv4_enable" style="vertical-align:middle;" checked="true">
@@ -754,25 +756,25 @@ function mOut(obj){
 													</td>
 												</tr>
 												<tr>
-													<th><a onmouseover="mOver(this, 2)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">宣告路由表（--advertise-routes）</a></th>
+													<th><a onmouseover="mOver(this, 2)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);" sclang>Advertise routing</a></th>
 													<td>
 														<input type="checkbox" id="tailscale_advertise_routes" style="vertical-align:middle;" checked="true">
 													</td>
 												</tr>
 												<tr>
-													<th><a onmouseover="mOver(this, 2)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">接受路由表（--accept-routes）</a></th>
+													<th><a onmouseover="mOver(this, 2)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);" sclang>Accept routing</a></th>
 													<td>
 														<input type="checkbox" id="tailscale_accept_routes" style="vertical-align:middle;" checked="true">
 													</td>
 												</tr>
 												<tr>
-													<th><a onmouseover="mOver(this, 3)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">互联网出口（--advertise-exit-node）</a></th>
+													<th><a onmouseover="mOver(this, 3)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);" sclang>Exit node</a></th>
 													<td>
 														<input type="checkbox" id="tailscale_exit_node" style="vertical-align:middle;">
 													</td>
 												</tr>
 												<tr>
-													<th><a onmouseover="mOver(this, 4)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);">自动更新（--auto-update）</a></th>
+													<th><a onmouseover="mOver(this, 4)" onmouseout="mOut(this)" class="hintstyle" href="javascript:void(0);" sclang>Autoupdate</a></th>
 													<td>
 														<input type="checkbox" id="tailscale_auto_update" style="vertical-align:middle;">
 													</td>
@@ -812,19 +814,19 @@ function mOut(obj){
 											<table id="tailscale_tcnets_status" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable_table">
 												<thead>
 													<tr>
-														<td colspan="5">tailscale - 网口状态</td>
+														<td colspan="5" sclang>tailscale - Interface</td>
 													</tr>
 												</thead>
 												<tr>
-													<th style="width:20%">接口</th>
-													<th style="width:20%">IP</th>
-													<th style="width:20%">下行</th>
-													<th style="width:20%">上行</th>
+													<th style="width:20%" sclang>Interface</th>
+													<th style="width:20%" sclang>IP</th>
+													<th style="width:20%" sclang>RX</th>
+													<th style="width:20%" sclang>TX</th>
 												</tr>
 											</table>
 										</div>
 										<div id="tailscale_jion_btn_div" class="apply_gen" style="display:none;">
-											<input class="button_gen" id="tailscale_jion_btn" onClick="save()" type="button" value="重启插件" />
+											<input sclang class="button_gen" id="tailscale_jion_btn" onClick="save()" type="button" value="Restart tailscale" />
 										</div>
 									</td>
 								</tr>

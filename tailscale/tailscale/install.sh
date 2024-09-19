@@ -80,6 +80,7 @@ install_now(){
 	# remove before install
 	rm -rf /jffs/softcenter/bin/tailscale* >/dev/null 2>&1
 	rm -rf /jffs/softcenter/res/icon-tailscale.png >/dev/null 2>&1
+	rm -rf /jffs/softcenter/res/tailscale*.json >/dev/null 2>&1
 	rm -rf /jffs/softcenter/scripts/tailscale_* >/dev/null 2>&1
 	rm -rf /jffs/softcenter/scripts/uninstall_tailscale.sh >/dev/null 2>&1
 	rm -rf /jffs/softcenter/webs/Module_tailscale.asp >/dev/null 2>&1
@@ -113,6 +114,9 @@ install_now(){
 
 	if [ -z "$(dbus get tailscale_exit_node)" ];then
 		dbus set tailscale_exit_node="0"
+	fi
+	if [ -z "$(dbus get tailscale_auto_update)" ];then
+		dbus set tailscale_auto_update="0"
 	fi
 	
 	# dbus value

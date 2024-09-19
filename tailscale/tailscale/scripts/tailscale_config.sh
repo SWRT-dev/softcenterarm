@@ -3,15 +3,36 @@
 source /jffs/softcenter/scripts/base.sh
 eval `dbus export tailscale_`
 
-alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】:'
 PID_FILE=/var/run/tailscaled.pid
 LOG_FILE=/tmp/upload/tailscale_log.txt
+JSON_ALL=""
+date_format=""
 echo "" > $LOG_FILE
 
+get_lang(){
+	local json_file
+	case  $(nvram get preferred_lang) in
+		CN)
+			json_file=tailscaleCN.json
+			date_format=%Y年%m月%d日
+		;;
+		TW)
+			json_file=tailscaleTW.json
+			date_format=%Y年%m月%d日
+		;;
+		*)
+			json_file=tailscaleEN.json
+			date_format=%Y/%m/%d
+		;;
+	esac
+	JSON_ALL=`cat /jffs/softcenter/res/${json_file}`
+}
+alias echo_date='echo [$(date -R +${date_format}\ %X)]:'
 tailscale_start(){
-	local subnet subnet1 subnet2 subnet3 args
+	local subnet subnet1 subnet2 subnet3 args msg
 	if [ "$tailscale_enable" == "1" ];then
-		echo_date "启动tailscaled"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Start"'`
+		echo_date "${msg} tailscaled"
 		mkdir -p /jffs/softcenter/etc/tailscale
 		ln -sf /jffs/softcenter/etc/tailscale /tmp/var/lib/tailscale
 		/jffs/softcenter/bin/tailscaled --cleanup
@@ -23,74 +44,95 @@ tailscale_start(){
 			subnet3=`echo $subnet |cut -d. -f3`
 			subnet="${subnet1}.${subnet2}.${subnet3}.0/24"
 			args=" --advertise-routes=${subnet}"
-			echo_date "宣告路由表已启用"
+			msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Advertise routing is enabled"'`
+			echo_date "${msg}"
 		fi
 		if [ "$tailscale_accept_routes" == "1" ];then
 			args="${args} --accept-routes"
-			echo_date "接受路由表已启用"
+			msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Accept routing is enabled"'`
+			echo_date "${msg}"
 		fi
 		if [ "$tailscale_accept_routes" == "1" ];then
 			args="${args} --advertise-exit-node"
-			echo_date "互联网出口已启用"
+			msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Exit node is enabled"'`
+			echo_date "${msg}"
 		fi
-		echo_date "启用tailscale网络连接"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Start tailscale network connection"'`
+		echo_date "${msg}"
 		/jffs/softcenter/bin/tailscale up --accept-dns=false ${args} --reset &
-		echo_date "检测tailscale登录状态"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Detect tailscale login status"'`
+		echo_date "${msg}"
+		sleep 4s #wait for tailscaled to receive reply
 		check_login_status
 		if [ "$tailscale_auto_update" == "1" ];then
 			/jffs/softcenter/bin/tailscale set --auto_update
-			echo_date "自动更新已启用"
+			msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Auto update is enabled"'`
+			echo_date "${msg}"
 		fi
 #		if [ "$tailscale_ipv4_enable" == "0" ];then
 #		elif [ "$tailscale_ipv6_enable" == "0" ];then
 #		fi
-		echo_date "设置dnsmasq解析"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Setting dnsmasq for tailscale"'`
+		echo_date "${msg}"
 		echo "interface=tailscale*" > /etc/dnsmasq.user/ts.conf
 		echo "no-dhcp-interface=tailscale*" > /etc/dnsmasq.user/ts.conf
 		service restart_dnsmasq 2>&1
-		echo_date "tailscale启动完毕"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Tailscale startup completed"'`
+		echo_date "${msg}"
     fi
 }
 
 tailscale_stop(){
 #	/jffs/softcenter/bin/tailscale down &
 	if [ -n "$(pidof tailscaled)" ];then
-		echo_date "关闭tailscale网络连接"
-		/jffs/softcenter/bin/tailscaled --cleanup
-		echo_date "关闭tailscale"
-		killall tailscale
-		killall tailscaled
+		local msg
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Stop tailscale network connection"'`
+		echo_date "${msg}"
+		/jffs/softcenter/bin/tailscaled --cleanup >/dev/null 2>&1 
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Stop"'`
+		echo_date "${msg} tailscale"
+		killall tailscale >/dev/null 2>&1 
+		killall tailscaled >/dev/null 2>&1 
 		rm -rf /tmp/var/lib/tailscale
 #		dbus set tailscale_online=0
 	fi
 }
 
 check_login_status(){
-	local status ipaddr info_all
+	local status ipaddr info_all msg
 	info_all=`/jffs/softcenter/bin/tailscale status --json`
 	status=`echo ${info_all} | /jffs/softcenter/bin/jq -r .BackendState`
 	if [ "$status" == "NoState" -o "$status" == "Stopped" ]; then
-		echo_date "tailscale无法链接服务器"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Tailscale cannot connect to the server"'`
+		echo_date "${msg}"
 	elif [ "$status" == "NeedsLogin" -o "$status" == "NeedsMachineAuth" ]; then
 		ipaddr=`nvram get lan_ipaddr`
 		/jffs/softcenter/bin/tailscale web --listen ${ipaddr}:8088 &
-		echo_date "tailscale未加入网络,浏览器打开http://${ipaddr}:8088加入网络,此链接在tailscale加入网络完成后下次启动时自动失效"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Open web site"' | sed 's/router/'"${ipaddr}"'/g'`
+		echo_date "${msg}"
 	else
-		echo_date "tailscale已加入网络"
+		msg=`echo ${JSON_ALL} | /jffs/softcenter/bin/jq -r '."Tailscale has joined the network"'`
+		echo_date "${msg}"
 	fi
 }
 
 case $1 in
 start)
+		get_lang
 		tailscale_stop >> $LOG_FILE
 		tailscale_start >> $LOG_FILE
+		echo XU6J03M6 >> $LOG_FILE
         ;;
 start_nat)
+		get_lang
 		tailscale_stop >> $LOG_FILE
 		tailscale_start >> $LOG_FILE
+		echo XU6J03M6 >> $LOG_FILE
         ;;
 stop)
+		get_lang
 		tailscale_stop >> $LOG_FILE
+		echo XU6J03M6 >> $LOG_FILE
         ;;
 esac
 
@@ -100,6 +142,7 @@ case $2 in
 #        ;;
 
 web_submit)
+		get_lang
 		http_response $1
 		tailscale_stop >> $LOG_FILE
 		tailscale_start >> $LOG_FILE

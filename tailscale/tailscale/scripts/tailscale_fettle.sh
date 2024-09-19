@@ -3,8 +3,9 @@
 source /jffs/softcenter/scripts/base.sh
 
 tailscale_status(){
-	local status pid msg msg2 msg3
+	local status pid msg msg2 msg3 lang
 	pid=`pidof tailscaled`
+	lang=`nvram get preferred_lang`
 	if [ -n "$pid" ];then
 		status=`/jffs/softcenter/bin/tailscale status | grep -i $(uname -n) | grep "linux"`
 		if [ "$status" != "" ]; then
@@ -12,9 +13,17 @@ tailscale_status(){
 		else
 			msg3="OFFLINE"
 		fi
-		msg2="进程运行正常！"
+		if [ "$lang" == "CN" -o "$lang" == "TW" ];then
+			msg2="进程运行正常！"
+		else
+			msg2="RUNNING"
+		fi
 	else
-		msg2="进程未运行"
+		if [ "$lang" == "CN" -o "$lang" == "TW" ];then
+			msg2="进程未运行！"
+		else
+			msg2="NOT RUNNING"
+		fi
 	fi
 	msg="${msg2}@@${msg3}"
 	http_response ${msg}

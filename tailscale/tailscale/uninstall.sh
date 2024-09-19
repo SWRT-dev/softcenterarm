@@ -5,6 +5,7 @@ echo_date "删除tailscale插件相关文件！"
 rm -rf /tmp/tailscale* >/dev/null 2>&1
 sh /jffs/softcenter/scripts/tailscale_config.sh stop
 rm -rf /jffs/softcenter/res/icon-tailscale.png
+rm -rf /jffs/softcenter/res/tailscale*.json
 rm -rf /jffs/softcenter/scripts/tailscale*
 rm -rf /jffs/softcenter/webs/Module_tailscale.asp
 #rm -rf /jffs/softcenter/etc/tailscale
