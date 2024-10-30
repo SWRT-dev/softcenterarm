@@ -2,7 +2,7 @@
 
 
 MODULE=koolproxy
-VERSION=3.8.5.5
+VERSION=3.8.5.6
 TITLE=koolproxy
 DESCRIPTION=去广告，没烦恼
 HOME_URL=Module_koolproxy.asp

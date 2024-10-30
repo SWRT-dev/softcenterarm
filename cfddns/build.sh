@@ -2,7 +2,7 @@
 
 
 MODULE=cfddns
-VERSION=1.8
+VERSION=1.9
 TITLE="Cloudflare DDNS"
 DESCRIPTION=Cloudflare解析自动更新IP
 HOME_URL=Module_cfddns.asp

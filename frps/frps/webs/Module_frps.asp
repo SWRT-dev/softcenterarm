@@ -12,6 +12,16 @@
 <link rel="stylesheet" type="text/css" href="form_style.css"/>
 <link rel="stylesheet" type="text/css" href="css/element.css">
 <link rel="stylesheet" type="text/css" href="/res/softcenter.css"> 	
+<link rel="stylesheet" type="text/css" href="usp_style.css"/>
+<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
+<script type="text/javascript" src="/state.js"></script>
+<script type="text/javascript" src="/popup.js"></script>
+<script type="text/javascript" src="/help.js"></script>
+<script type="text/javascript" src="/validator.js"></script>
+<script type="text/javascript" src="/general.js"></script>
+<script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
+<script type="text/javascript" src="/res/softcenter.js"></script>
 <style>
 input[type=button]:focus {
 	outline: none;
@@ -60,15 +70,6 @@ input[type=button]:focus {
     display:none;
 }
 </style>
-<link rel="stylesheet" type="text/css" href="usp_style.css"/>
-<script type="text/javascript" src="/state.js"></script>
-<script type="text/javascript" src="/popup.js"></script>
-<script type="text/javascript" src="/help.js"></script>
-<script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
-<script type="text/javascript" src="/general.js"></script>
-<script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
-<script type="text/javascript" src="/res/softcenter.js"></script>
 <script>
 var db_frps = {};
 var params_input = ["frps_common_webServer__addr", "frps_common_webServer__port", "frps_common_webServer__user", "frps_common_webServer__password", "frps_common_bindAddr", "frps_common_bindPort", "frps_common_auth__token", "frps_common_vhostHTTPPort", "frps_common_vhostHTTPSPort", "frps_cron_time", "frps_common_transport__maxPoolCount", "frps_common_log__to", "frps_common_log__level", "frps_common_log__maxDays", "frps_common_transport__tcpMux", "frps_cron_hour_min", "frps_common_transport__tls__force", "frps_common_kcpBindPort", "frps_common_quicBindPort", "frps_common_allowPorts", "frps_openports", "frps_ifopenport", "frps_common_subDomainHost", "frps_cron_type", "frps_openports_u"]

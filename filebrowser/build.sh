@@ -1,7 +1,7 @@
 #!/bin/sh
 
 MODULE="filebrowser"
-VERSION="1.0.6"
+VERSION="1.0.7"
 TITLE="filebrowser"
 DESCRIPTION="FileBrowser：您的可视化路由文件管理系统"
 HOME_URL="Module_filebrowser.asp"

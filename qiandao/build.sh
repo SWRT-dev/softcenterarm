@@ -2,7 +2,7 @@
 
 
 MODULE=qiandao
-VERSION=1.7
+VERSION=1.8
 TITLE=签到dog
 DESCRIPTION=这是一只自动帮你签到的dog
 HOME_URL=Module_qiandao.asp

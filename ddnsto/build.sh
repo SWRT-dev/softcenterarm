@@ -1,7 +1,7 @@
 #!/bin/sh
 
 MODULE="ddnsto"
-VERSION="3.0.2"
+VERSION="3.0.3"
 TITLE="DDNSTO远程控制"
 DESCRIPTION="DDNSTO远程控制"
 HOME_URL="Module_ddnsto.asp"

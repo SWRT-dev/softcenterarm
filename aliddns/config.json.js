@@ -1,9 +1,9 @@
 {
-"version":"2.5",
-"md5":"8d92b155a3780dccf1df41725eaf6ffd",
+"version":"2.6",
+"md5":"c60eb2990632e0de944d07ccb1b90fc9",
 "arch":"arm",
 "home_url":"Module_aliddns.asp",
 "title":"阿里DDNS",
 "description":"aliddns",
-"build_date":"2023-04-30_08:23:37"
+"build_date":"2024-10-24_07:45:48"
 }

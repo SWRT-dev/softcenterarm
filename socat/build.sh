@@ -2,7 +2,7 @@
 
 
 MODULE=socat
-VERSION=1.0
+VERSION=1.1
 TITLE="Socat端口转发"
 DESCRIPTION="Socat 端口转发"
 HOME_URL=Module_socat.asp

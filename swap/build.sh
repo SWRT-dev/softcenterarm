@@ -2,7 +2,7 @@
 
 
 MODULE=swap
-VERSION=2.4
+VERSION=2.6
 TITLE=虚拟内存
 DESCRIPTION=老板，来一斤虚拟内存~
 HOME_URL=Module_swap.asp
@@ -29,4 +29,4 @@ cd $DIR
 
 do_build_result
 
-sh backup.sh $MODULE
+#sh backup.sh $MODULE

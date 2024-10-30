@@ -1,7 +1,7 @@
 #!/bin/sh
 
 MODULE=verysync
-VERSION=1.1.0
+VERSION=1.1.1
 TITLE="微力同步"
 DESCRIPTION="自己的私有云"
 HOME_URL=Module_verysync.asp

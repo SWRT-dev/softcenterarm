@@ -1,7 +1,7 @@
 #!/bin/sh
 
 MODULE="lingti"
-VERSION="1.0.2"
+VERSION="1.0.3"
 TITLE="灵缇游戏加速插件"
 DESCRIPTION="灵缇游戏加速插件"
 HOME_URL="Module_lingti.asp"

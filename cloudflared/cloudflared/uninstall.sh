@@ -16,6 +16,7 @@ do
 done
 
 sleep 1
+rm -rf /jffs/softcenter/bin/cloudflared
 rm -rf /jffs/softcenter/scripts/cloudflared*
 rm -rf /jffs/softcenter/bin/cloudflared*
 rm -rf /jffs/softcenter/init.d/*cloudflared.sh

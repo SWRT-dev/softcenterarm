@@ -136,8 +136,9 @@ fun_start_stop(){
   [ -z "$cloudflared_log_level" ] && cloudflared_log_level=info && dbus set cloudflared_log_level=info
   [ "$cloudflared_mode" = "token" ] && [ -z "$cloudflared_token" ] && echo_date "未获取到隧道token，无法启动，请检查隧道token值是否填写，程序退出" >>${cfd_logs} && return 1
   [ "$cloudflared_mode" = "cloudflared_cmd" ] && [ -z "$cloudflared_cmd" ] && echo_date "未获取到自定义启动参数，无法启动，请检查自定义启动参数是否填写，程序退出" >>${cfd_logs} && return 1
+	ln -sf /jffs/softcenter/bin/cloudflared /tmp/cloudflared
   chmod +x ${cloudflared_path}
-  [ $(($($cloudflared_path -h | wc -l))) -lt 3 ] && rm -rf ${cloudflared_path} && fun_update
+#  [ $(($($cloudflared_path -h | wc -l))) -lt 3 ] && rm -rf ${cloudflared_path} && fun_update
   chmod +x ${cloudflared_path}
   cloudflared_ver="$($cloudflared_path -v | awk {'print $3'})"
   dbus set cloudflared_version=$cloudflared_ver
@@ -194,7 +195,7 @@ clearlog)
 	http_response "$1"
     ;;
 update)
-	fun_update 
+	#fun_update 
 	http_response "$1"
     ;;
 restart)

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 MODULE=ddnspod
-VERSION=1.9
+VERSION=2.0
 TITLE=DDnspod
 DESCRIPTION=使用Dnspod的ddns服务
 HOME_URL=Module_ddnspod.asp

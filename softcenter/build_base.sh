@@ -46,4 +46,6 @@ EOF
 
 #update md5
 python ../softcenter/gen_install.py stage2
+rm -rf ${MODULE}/version
+rm -rf ${MODULE}/.arch
 }

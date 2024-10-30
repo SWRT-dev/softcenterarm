@@ -22,6 +22,7 @@ fi
 find /jffs/softcenter/init.d/ -name "*cloudflared.sh*"|xargs rm -rf
 cd /tmp
 
+cp -rf /tmp/cloudflared/bin/* /jffs/softcenter/bin/
 cp -rf /tmp/cloudflared/scripts/* /jffs/softcenter/scripts/
 cp -rf /tmp/cloudflared/webs/* /jffs/softcenter/webs/
 cp -rf /tmp/cloudflared/res/* /jffs/softcenter/res/
@@ -36,6 +37,7 @@ else
 fi
 
 
+chmod +x /jffs/softcenter/bin/cloudflared
 chmod +x /jffs/softcenter/scripts/cloudflared_*
 chmod +x /jffs/softcenter/init.d/S89cloudflared.sh
 chmod +x /jffs/softcenter/scripts/uninstall_cloudflared.sh

@@ -2,7 +2,7 @@
 
 
 MODULE=aria2
-VERSION=3.1
+VERSION=3.2
 TITLE=Aria2
 DESCRIPTION=linux下载利器
 HOME_URL=Module_aria2.asp

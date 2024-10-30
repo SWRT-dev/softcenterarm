@@ -15,11 +15,12 @@
 <link rel="stylesheet" type="text/css" href="css/icon.css">
 <link rel="stylesheet" type="text/css" href="css/element.css">
 <link rel="stylesheet" type="text/css" href="res/softcenter.css">
+<script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/state.js"></script>
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
-<script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/general.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/res/softcenter.js"></script>
@@ -266,7 +267,7 @@ function get_dbus_data() {
 												<input class="button_gen" id="cmdBtn" onClick="save();" type="button" value="提交" />
 											</div>
 											<div style="margin:30px 0 10px 5px;" class="splitLine"></div>
-											<div class="KoolshareBottom">
+											<div class="SCBottom">
 												论坛技术支持：<a href="http://www.koolshare.cn" target="_blank"> <i><u>www.koolshare.cn</u></i></a>
 												<br/>后台技术支持：<i>Xiaobao</i> 
 												<br/>Shell, Web by：<i>freexiaoyao & sadog</i>

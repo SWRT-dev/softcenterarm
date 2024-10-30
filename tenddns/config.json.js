@@ -1,8 +1,9 @@
 {
-"version":"0.0.2",
-"md5":"453e2ed739f4d62988266f0fce719670",
+"version":"0.0.4",
+"md5":"182ea363c7b6d6f676239a04537a32ff",
+"arch":"arm",
 "home_url":"Module_tenddns.asp",
 "title":"腾讯云ddns",
 "description":"腾讯云ddns",
-"build_date":"2020-08-13_11:57:17"
+"build_date":"2024-10-30_11:00:31"
 }

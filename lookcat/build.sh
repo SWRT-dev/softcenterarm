@@ -2,7 +2,7 @@
 
 
 MODULE=lookcat
-VERSION=1.1
+VERSION=1.2
 TITLE=光猫助手
 DESCRIPTION="光猫助手: 快速设置，通过路由直接访问猫后台"
 HOME_URL=Module_lookcat.asp

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 MODULE="serverchan"
-VERSION="2.6"
+VERSION="2.7"
 TITLE="ServerChan微信推送"
 DESCRIPTION="从路由器推送状态及通知的工具"
 HOME_URL="Module_serverchan.asp"

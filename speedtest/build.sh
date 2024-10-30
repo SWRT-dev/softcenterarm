@@ -2,7 +2,7 @@
 
 
 MODULE=speedtest
-VERSION=0.0.3
+VERSION=0.0.4
 TITLE=局域网测速
 DESCRIPTION=局域网网速测试工具
 HOME_URL=Module_speedtest.asp

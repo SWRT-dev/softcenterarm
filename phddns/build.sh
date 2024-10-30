@@ -2,7 +2,7 @@
 
 
 MODULE=phddns
-VERSION=3.0.5
+VERSION=3.0.6
 TITLE="花生壳内网穿透"
 DESCRIPTION="花生壳内网穿透"
 HOME_URL=Module_phddns.asp
